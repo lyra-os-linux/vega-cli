@@ -96,7 +96,7 @@ vega::services::_listar() {
     local -a names labels descriptions enableds actives availables menu_args=()
     local -a rows
     mapfile -t rows < <(printf '%s' "$data" | jq -r '.[0][] |
-      [.[0],.[1],.[2],(.[3]|tostring),(.[4]|tostring),(.[5]|tostring)] | join("")')
+      [.[0],.[1],.[2],(.[3]|tostring),(.[4]|tostring),(.[5]|tostring)] | join("")')
     local idx=0 row name label description enabled active available
     for row in "${rows[@]}"; do
       IFS=$'\x1f' read -r name label description enabled active available <<<"$row"

@@ -25,7 +25,7 @@ vega::module_storage() {
     local -a menu_args=()
     local -a rows
     mapfile -t rows < <(printf '%s' "$data" | jq -r '.[0][] |
-      [.[0],.[1],.[2],.[3],.[4],.[5],.[6],(.[7]|tostring),.[8],.[9],(.[10]|tostring),(.[11]|tostring),(.[12]|tostring)] | join("")')
+      [.[0],.[1],.[2],.[3],.[4],.[5],.[6],(.[7]|tostring),.[8],.[9],(.[10]|tostring),(.[11]|tostring),(.[12]|tostring)] | join("\u001f")')
     local idx=0 row name path type fstype size used avail usepercent mountpoint model removable canmount canunmount
     for row in "${rows[@]}"; do
       IFS=$'\x1f' read -r name path type fstype size used avail usepercent mountpoint model removable canmount canunmount <<<"$row"

@@ -125,7 +125,7 @@ vega::monitor::_processos() {
     local -a pids ppids names users cpus mems states
     local -a rows
     mapfile -t rows < <(printf '%s' "$data" | jq -r '.[0][] |
-      [(.[0]|tostring),(.[1]|tostring),.[2],.[3],(.[4]|tostring),(.[5]|tostring),.[6]] | join("")')
+      [(.[0]|tostring),(.[1]|tostring),.[2],.[3],(.[4]|tostring),(.[5]|tostring),.[6]] | join("")')
     local idx=0 row pid ppid name user cpu mem state
     for row in "${rows[@]}"; do
       IFS=$'\x1f' read -r pid ppid name user cpu mem state <<<"$row"

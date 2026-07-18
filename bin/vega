@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Ponto de entrada do vega-cli — interface de terminal do Vega (dialog),
+# pensada pra administrar máquinas/servidores acessados via SSH, sem
+# depender de ambiente gráfico. Ver vega-cli/README.md.
+set -euo pipefail
+
+# Resolve o diretório real do script, seguindo symlinks — /usr/bin/vega vai
+# ser um symlink pra cá quando empacotado (mesmo padrão do
+# lyra-vega-gtk -> vega-gtk).
+vega::resolve_root() {
+  local source="${BASH_SOURCE[0]}"
+  while [ -h "$source" ]; do
+    local dir
+    dir="$(cd -P "$(dirname "$source")" >/dev/null 2>&1 && pwd)"
+    source="$(readlink "$source")"
+    [[ $source != /* ]] && source="$dir/$source"
+  done
+  cd -P "$(dirname "$source")/.." >/dev/null 2>&1 && pwd
+}
+
+VEGA_CLI_ROOT="$(vega::resolve_root)"
+# Placeholder até o empacotamento (#104) substituir pela versão real da
+# release, do mesmo jeito que vegad recebe a versão via -ldflags.
+VEGA_CLI_VERSION="0.1.0-dev"
+readonly VEGA_CLI_ROOT VEGA_CLI_VERSION
+
+# shellcheck source=lib/term.sh
+source "$VEGA_CLI_ROOT/lib/term.sh"
+# shellcheck source=lib/ui.sh
+source "$VEGA_CLI_ROOT/lib/ui.sh"
+# shellcheck source=lib/dbus.sh
+source "$VEGA_CLI_ROOT/lib/dbus.sh"
+# shellcheck source=lib/painel.sh
+source "$VEGA_CLI_ROOT/lib/painel.sh"
+# shellcheck source=lib/software.sh
+source "$VEGA_CLI_ROOT/lib/software.sh"
+# shellcheck source=lib/backup.sh
+source "$VEGA_CLI_ROOT/lib/backup.sh"
+# shellcheck source=lib/hardware.sh
+source "$VEGA_CLI_ROOT/lib/hardware.sh"
+# shellcheck source=lib/users.sh
+source "$VEGA_CLI_ROOT/lib/users.sh"
+# shellcheck source=lib/network.sh
+source "$VEGA_CLI_ROOT/lib/network.sh"
+# shellcheck source=lib/services.sh
+source "$VEGA_CLI_ROOT/lib/services.sh"
+# shellcheck source=lib/datetime.sh
+source "$VEGA_CLI_ROOT/lib/datetime.sh"
+# shellcheck source=lib/storage.sh
+source "$VEGA_CLI_ROOT/lib/storage.sh"
+# shellcheck source=lib/logs.sh
+source "$VEGA_CLI_ROOT/lib/logs.sh"
+# shellcheck source=lib/monitor.sh
+source "$VEGA_CLI_ROOT/lib/monitor.sh"
+# shellcheck source=lib/menu.sh
+source "$VEGA_CLI_ROOT/lib/menu.sh"
+
+vega::configure_theme "$VEGA_CLI_ROOT"
+vega::require_dialog
+vega::require_dbus_tools
+vega::require_tty
+vega::install_cleanup_trap
+vega::install_pkttyagent
+
+# Painel é a tela inicial — aparece assim que o vega abre, sem precisar
+# navegar até o menu (critério de aceite da issue #105). "|| true": sob
+# set -e, se o usuário fechar o msgbox com Esc (código != 0) em vez de
+# Enter, isso não pode derrubar a sessão inteira.
+vega::module_painel || true
+
+vega::main_menu

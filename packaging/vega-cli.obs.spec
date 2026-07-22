@@ -54,6 +54,9 @@ install -d %{buildroot}%{_bindir}
 ln -s %{_prefix}/lib/vega-cli/bin/vega %{buildroot}%{_bindir}/vega
 
 %files
+%dir %{_prefix}/lib/vega-cli
+%dir %{_prefix}/lib/vega-cli/bin
+%dir %{_prefix}/lib/vega-cli/lib
 %{_prefix}/lib/vega-cli/bin/vega
 %{_prefix}/lib/vega-cli/lib/*.sh
 %{_prefix}/lib/vega-cli/lib/theme.dialogrc

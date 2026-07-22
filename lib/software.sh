@@ -212,6 +212,111 @@ vega::software::_repositorios() {
   fi
 }
 
+# vega::software::_confirmar_confiar_chave <repo> <keyId> <fingerprint> <userId>
+# Mostra a chave de assinatura descoberta pelo AddRepo e, se aprovado, chama
+# TrustRepoKey — trust-on-first-use, mesmo nível de confiança que
+# pacman/zypper/dnf já dão quando um humano aprova o prompt equivalente no
+# terminal. keyId vazio é o caso do pacman (Arch não tem como publicar uma
+# chave descobrível — ver distro.UntrustedKeyError no vegad): a única opção
+# ali é desativar a verificação de assinatura pra esse repositório, não
+# importar uma chave de verdade, por isso o texto muda.
+vega::software::_confirmar_confiar_chave() {
+  local repo="$1" key_id="$2" fingerprint="$3" user_id="$4"
+  local body
+  if [ -z "$key_id" ]; then
+    body="Não foi possível obter uma chave verificável para \"$repo\" (assinado por: $user_id). Deseja continuar mesmo assim, sem verificação de assinatura?"
+  else
+    body="\"$repo\" está assinado por:\n$user_id\nImpressão digital: $fingerprint\n\nConfiar nessa chave e continuar?"
+  fi
+  vega::ui::yesno "$body" "Confiar na chave do repositório?" || return
+  vega::software::_run_and_report "Confiando na chave…" Software TrustRepoKey ss "$repo" "$key_id"
+}
+
+# vega::software::_adicionar_repositorio pede nome+URL e chama AddRepo.
+# Diferente de vega::dbus::run_transaction (que só espera um sinal), AddRepo
+# pode emitir RepoKeyPending ANTES de TransactionFinished (com
+# success=false) quando o repositório está assinado por uma chave ainda não
+# confiada — então dois `busctl wait` rodam em paralelo, um por sinal, e a
+# gente confere qual chegou depois que TransactionFinished aparecer. Mesmo
+# desenho do SoftwareEvent::KeyPending na UI GTK
+# (vega-gtk/src/application.rs, monitor_add_repo_transaction).
+vega::software::_adicionar_repositorio() {
+  local name url
+  name="$(vega::ui::inputbox "Adicionar repositório" "Nome do repositório:")" || return
+  [ -n "$name" ] || return
+  url="$(vega::ui::inputbox "Adicionar repositório" "URL do repositório:")" || return
+  [ -n "$url" ] || return
+
+  vega::ui::infobox "Adicionando $name…" "Software"
+
+  local finished_out keypending_out finished_pid keypending_pid
+  finished_out="$(mktemp)"
+  keypending_out="$(mktemp)"
+  busctl --system --json=short wait "$VEGA_DBUS_OBJECT_PATH" \
+    "$VEGA_DBUS_BUS_NAME.Software" TransactionFinished \
+    >"$finished_out" 2>/dev/null &
+  finished_pid=$!
+  busctl --system --json=short wait "$VEGA_DBUS_OBJECT_PATH" \
+    "$VEGA_DBUS_BUS_NAME.Software" RepoKeyPending \
+    >"$keypending_out" 2>/dev/null &
+  keypending_pid=$!
+  sleep 0.2
+
+  local start_json start_rc=0
+  start_json="$(vega::dbus::call Software AddRepo ss "$name" "$url")" || start_rc=$?
+  if [ "$start_rc" -ne 0 ]; then
+    kill "$finished_pid" "$keypending_pid" >/dev/null 2>&1 || true
+    wait "$finished_pid" "$keypending_pid" 2>/dev/null || true
+    rm -f "$finished_out" "$keypending_out"
+    vega::ui::msgbox "Falha: $VEGA_DBUS_LAST_ERROR" "Software"
+    return
+  fi
+  local tx_id
+  tx_id="$(printf '%s' "$start_json" | jq -r '.data[0]')"
+
+  local elapsed=0
+  while kill -0 "$finished_pid" 2>/dev/null; do
+    if [ "$elapsed" -ge "$VEGA_DBUS_TRANSACTION_TIMEOUT" ]; then
+      kill "$finished_pid" >/dev/null 2>&1 || true
+      break
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  kill "$keypending_pid" >/dev/null 2>&1 || true
+  wait "$finished_pid" "$keypending_pid" 2>/dev/null || true
+
+  if [ ! -s "$finished_out" ]; then
+    rm -f "$finished_out" "$keypending_out"
+    vega::ui::msgbox "Tempo esgotado aguardando a conclusão da transação #$tx_id." "Software"
+    return
+  fi
+
+  local finished_success finished_message
+  finished_success="$(jq -r '.data[1]' <"$finished_out")"
+  finished_message="$(jq -r '.data[2]' <"$finished_out")"
+  rm -f "$finished_out"
+
+  if [ "$finished_success" = "true" ]; then
+    vega::ui::msgbox "$finished_message" "Software"
+    rm -f "$keypending_out"
+    return
+  fi
+
+  if [ -s "$keypending_out" ]; then
+    local key_repo key_id key_fingerprint key_user
+    key_repo="$(jq -r '.data[1]' <"$keypending_out")"
+    key_id="$(jq -r '.data[2]' <"$keypending_out")"
+    key_fingerprint="$(jq -r '.data[3]' <"$keypending_out")"
+    key_user="$(jq -r '.data[4]' <"$keypending_out")"
+    rm -f "$keypending_out"
+    vega::software::_confirmar_confiar_chave "$key_repo" "$key_id" "$key_fingerprint" "$key_user"
+  else
+    rm -f "$keypending_out"
+    vega::ui::msgbox "Falha: $finished_message" "Software"
+  fi
+}
+
 vega::module_software() {
   local choice
   while true; do
@@ -220,6 +325,7 @@ vega::module_software() {
       instalados "Pacotes instalados" \
       atualizacoes "Atualizações disponíveis" \
       repositorios "Repositórios" \
+      adicionar_repo "Adicionar repositório" \
       atualizar "Atualizar tudo" \
       mirrors "Otimizar mirrors" \
       cache "Limpar cache" \
@@ -233,6 +339,7 @@ vega::module_software() {
     instalados) vega::software::_listar_instalados || true ;;
     atualizacoes) vega::software::_listar_atualizacoes || true ;;
     repositorios) vega::software::_repositorios || true ;;
+    adicionar_repo) vega::software::_adicionar_repositorio || true ;;
     atualizar)
       if vega::ui::yesno "Atualizar todos os pacotes pendentes agora?" "Atualizar tudo"; then
         vega::software::_run_and_report "Atualizando pacotes…" Software UpdateAll || true

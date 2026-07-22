@@ -14,7 +14,7 @@ fi
 
 # Resolve o diretório real do script, seguindo symlinks — /usr/bin/vega vai
 # ser um symlink pra cá quando empacotado (mesmo padrão do
-# lyra-vega-gtk -> vega-gtk).
+# vega-gtk -> lyra-vega-gtk, o symlink de compatibilidade com o nome antigo).
 vega::resolve_root() {
   local source="${BASH_SOURCE[0]}"
   while [ -h "$source" ]; do

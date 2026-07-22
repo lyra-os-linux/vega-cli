@@ -19,6 +19,7 @@ Requires:       dialog
 Requires:       jq
 Requires:       systemd
 Requires:       polkit
+Requires:       sudo
 
 %description
 Interface de terminal do Vega (shell + dialog), para administrar
@@ -46,17 +47,10 @@ install -m644 vega-cli/lib/theme.dialogrc %{buildroot}%{_prefix}/lib/vega-cli/li
 install -d %{buildroot}%{_bindir}
 ln -s %{_prefix}/lib/vega-cli/bin/vega %{buildroot}%{_bindir}/vega
 
-install -Dm644 packaging/vega-cli/vega-cli.desktop \
-    %{buildroot}%{_datadir}/applications/vega-cli.desktop
-install -Dm644 packaging/vega-cli/vega-cli.svg \
-    %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/vega-cli.svg
-
 %files
 %{_prefix}/lib/vega-cli/bin/vega
 %{_prefix}/lib/vega-cli/lib/*.sh
 %{_prefix}/lib/vega-cli/lib/theme.dialogrc
 %{_bindir}/vega
-%{_datadir}/applications/vega-cli.desktop
-%{_datadir}/icons/hicolor/scalable/apps/vega-cli.svg
 
 %changelog

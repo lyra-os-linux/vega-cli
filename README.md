@@ -15,6 +15,10 @@ plano completo da v4.0 e a lista de módulos.
   acesso a D-Bus (issue [#103](https://github.com/britors/Vega/issues/103))
 - `polkit` (com `pkttyagent`) — autorização de ações privilegiadas numa
   sessão sem agente gráfico
+- `sudo` — o entrypoint (`bin/vega`) sempre roda como root; se invocado
+  sem privilégio, ele se reexecuta via `sudo`, que pede a senha do usuário
+
+Só roda pelo terminal — não tem lançador de desktop (`.desktop`).
 
 ## Estrutura
 

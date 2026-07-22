@@ -8,7 +8,7 @@
 # vega-cli é puro shell script (bash + dialog) — sem etapa de compilação,
 # BuildArch: noarch e sem makedepends de toolchain.
 #
-# Version literal (não %{version}/%define) — o serviço set_version deste
+# Version literal (não %%{version}/%%define) — o serviço set_version deste
 # diretório faz substituição textual simples na linha "Version:" e não
 # entende macro, então precisa achar um valor literal aqui pra reescrever.
 

@@ -47,6 +47,17 @@ vega::ui::inputbox() {
     --inputbox "$prompt" 0 0 "$init"
 }
 
+# vega::ui::passwordbox <título> <prompt>
+# Como inputbox, mas sem exibir os caracteres digitados.
+vega::ui::passwordbox() {
+  local title="$1" prompt="$2"
+  dialog --backtitle "$VEGA_BACKTITLE" \
+    --title "$title" \
+    --stdout \
+    --insecure \
+    --passwordbox "$prompt" 0 0
+}
+
 # vega::ui::infobox <texto> [título]
 # Desenha e retorna na hora, sem esperar tecla — pra mensagens de "aguarde"
 # antes de uma chamada D-Bus que pode demorar.

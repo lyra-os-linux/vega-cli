@@ -18,13 +18,33 @@ vega::users::_validar_username() {
 }
 
 vega::users::_criar() {
-  local username
+  local username full_name password confirmation groups_text
+  full_name="$(vega::ui::inputbox "Novo usuário" "Nome completo:")" || return
+  [ -n "${full_name// }" ] || {
+    vega::ui::msgbox "O nome completo é obrigatório." "Usuários"
+    return
+  }
   username="$(vega::ui::inputbox "Novo usuário" "Nome de usuário:")" || return
   username="$(printf '%s' "$username" | xargs)"
   if ! vega::users::_validar_username "$username"; then
     vega::ui::msgbox "Nome de usuário inválido. Use letras minúsculas, dígitos, \"_\" ou \"-\", começando com letra minúscula ou \"_\"." "Usuários"
     return
   fi
+  password="$(vega::ui::passwordbox "Novo usuário" "Senha (mínimo de 8 caracteres):")" || return
+  confirmation="$(vega::ui::passwordbox "Novo usuário" "Confirme a senha:")" || return
+  if [ "${#password}" -lt 8 ] || [ "$password" != "$confirmation" ]; then
+    vega::ui::msgbox "As senhas devem coincidir e ter no mínimo 8 caracteres." "Usuários"
+    return
+  fi
+  groups_text="$(vega::ui::inputbox "Novo usuário" "Grupos adicionais separados por vírgula (opcional):")" || return
+  local -a groups=()
+  IFS=',' read -ra groups <<<"$groups_text"
+  local -a clean_groups=()
+  local group
+  for group in "${groups[@]}"; do
+    group="$(printf '%s' "$group" | xargs)"
+    [ -n "$group" ] && clean_groups+=("$group")
+  done
 
   local is_admin role
   if vega::ui::yesno "Criar \"$username\" como administrador?" "Novo usuário"; then
@@ -38,7 +58,9 @@ vega::users::_criar() {
   vega::ui::yesno "A conta $username será criada como $role." "Criar usuário?" || return
 
   vega::ui::infobox "Criando $username…" "Usuários"
-  if vega::dbus::call Users CreateUser sb "$username" "$is_admin" >/dev/null; then
+  if vega::dbus::call Users CreateUser sssasayb \
+    "$username" "$full_name" "$password" \
+    "${#clean_groups[@]}" "${clean_groups[@]}" 0 "$is_admin" >/dev/null; then
     vega::ui::msgbox "Usuário $username criado." "Usuários"
   else
     vega::ui::msgbox "Falha ao criar usuário: $VEGA_DBUS_LAST_ERROR" "Usuários"
@@ -120,7 +142,7 @@ vega::module_users() {
     local -a usernames=() admins=()
     if [ "$count" -gt 0 ]; then
       local -a rows
-      mapfile -t rows < <(printf '%s' "$data" | jq -r '.[0][] | [.[0],(.[1]|tostring)] | join("")')
+      mapfile -t rows < <(printf '%s' "$data" | jq -r '.[0][] | [.[0],(.[3]|tostring)] | join("")')
       local row username is_admin idx=0
       for row in "${rows[@]}"; do
         IFS=$'\x1f' read -r username is_admin <<<"$row"

@@ -18,7 +18,7 @@ Release:        1%{?dist}
 Summary:        Interface de terminal do Vega (dialog) para administração via SSH
 License:        GPL-3.0-only
 URL:            https://github.com/britors/Vega
-Source0:        vega-src-%{version}.tar.gz
+Source0:        vega-src-%{version}.tar
 BuildArch:      noarch
 
 Requires:       dialog

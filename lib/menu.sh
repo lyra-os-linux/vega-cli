@@ -8,7 +8,7 @@
 
 vega::module_about() {
   vega::ui::msgbox \
-    "Lyra Vega - Enterprise Control Center\nInterface de terminal\nVersão: ${VEGA_CLI_VERSION}" \
+    "Vega - Control Center\nInterface de terminal\nVersão: ${VEGA_CLI_VERSION}" \
     "Sobre"
 }
 

@@ -4,7 +4,7 @@
 # --backtitle/--stdout consistentes em todo o vega-cli. Sourced pelo
 # entrypoint (bin/vega) — não é executável sozinho.
 
-VEGA_BACKTITLE="Lyra Vega - Enterprise Control Center"
+VEGA_BACKTITLE="Vega - Control Center"
 readonly VEGA_BACKTITLE
 
 # vega::ui::menu <título> <prompt> <tag1> <item1> [<tag2> <item2> ...]

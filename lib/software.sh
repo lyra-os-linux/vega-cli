@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Módulo "Software": buscar/instalar/remover pacotes, atualizações
-# pendentes, repositórios, atualizar tudo, otimizar mirrors e limpar cache
+# pendentes, repositórios, atualizar tudo e limpar cache
 # — equivalente ao módulo Software do vega-gtk (org.lyraos.Vega1.Software,
 # vega-gtk/src/ui/software.rs). Sourced pelo entrypoint (bin/vega) — não é
 # executável sozinho.
@@ -327,7 +327,6 @@ vega::module_software() {
       repositorios "Repositórios" \
       adicionar_repo "Adicionar repositório" \
       atualizar "Atualizar tudo" \
-      mirrors "Otimizar mirrors" \
       cache "Limpar cache" \
       voltar "Voltar")" || return
 
@@ -343,11 +342,6 @@ vega::module_software() {
     atualizar)
       if vega::ui::yesno "Atualizar todos os pacotes pendentes agora?" "Atualizar tudo"; then
         vega::software::_run_and_report "Atualizando pacotes…" Software UpdateAll || true
-      fi
-      ;;
-    mirrors)
-      if vega::ui::yesno "Otimizar a lista de mirrors agora?" "Otimizar mirrors"; then
-        vega::software::_run_and_report "Otimizando mirrors…" Software OptimizeMirrors || true
       fi
       ;;
     cache)

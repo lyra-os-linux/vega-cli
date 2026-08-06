@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # Módulo "Hardware e Kernel": inventário de hardware (CPU/GPU/memória/
-# firmware), troca de driver NVIDIA, listar/instalar/remover kernels e
-# configuração de boot — equivalente ao módulo Hardware e Kernel do
+# firmware), listar/instalar/remover kernels e configuração de boot —
+# equivalente ao módulo Hardware e Kernel do
 # vega-gtk (org.lyraos.Vega1.Hardware + Kernel, vega-gtk/src/ui/kernel.rs +
 # vega-gtk/src/ui/shell.rs). Sourced pelo entrypoint (bin/vega) — não é
 # executável sozinho.
 #
 # Nota: ao contrário de Software/Backup, nem Hardware nem Kernel emitem
 # sinal de conclusão nenhum (sem "*Finished" no contrato D-Bus) — não usar
-# vega::dbus::run_transaction aqui. SwitchNvidiaDriver, Remove e
-# ApplyBootConfig são chamadas síncronas normais (o próprio vegad bloqueia
-# até terminar). Só Kernel.Install é "dispare e esqueça": o vegad devolve
+# vega::dbus::run_transaction aqui. Remove e ApplyBootConfig são chamadas
+# síncronas normais (o próprio vegad bloqueia até terminar). Só Kernel.Install é
+# "dispare e esqueça": o vegad devolve
 # na hora e continua o trabalho real em segundo plano, sem jeito de saber
 # via D-Bus quando termina — o vega-gtk lida com isso com uma espera cega
 # de alguns segundos antes de atualizar a lista, e aqui fazemos o mesmo.
@@ -33,26 +33,6 @@ vega::hardware::_inventario() {
 Vídeo: $gpu
 Memória: $ram
 Firmware: $firmware" "Inventário"
-}
-
-vega::hardware::_trocar_driver() {
-  local driver
-  driver="$(vega::ui::menu "Trocar driver NVIDIA" "Escolha o driver:" \
-    nvidia-open-dkms "nvidia-open-dkms" \
-    nvidia-580xx-dkms "nvidia-580xx-dkms" \
-    nouveau "nouveau" \
-    voltar "Voltar")" || return
-  [ "$driver" = "voltar" ] && return
-
-  vega::ui::yesno "Aplicar $driver? O sistema criará um snapshot antes da troca." \
-    "Trocar driver NVIDIA?" || return
-
-  vega::ui::infobox "Aplicando driver $driver…" "Hardware e Kernel"
-  if vega::dbus::call Hardware SwitchNvidiaDriver s "$driver" >/dev/null; then
-    vega::ui::msgbox "Driver $driver aplicado." "Hardware e Kernel"
-  else
-    vega::ui::msgbox "Falha ao trocar driver: $VEGA_DBUS_LAST_ERROR" "Hardware e Kernel"
-  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -256,13 +236,11 @@ vega::module_hardware() {
   while true; do
     choice="$(vega::ui::menu "Hardware e Kernel" "Escolha uma área:" \
       inventario "Inventário" \
-      driver "Trocar driver NVIDIA" \
       kernel "Kernel" \
       voltar "Voltar")" || return
 
     case "$choice" in
     inventario) vega::hardware::_inventario || true ;;
-    driver) vega::hardware::_trocar_driver || true ;;
     kernel) vega::hardware::_kernel || true ;;
     voltar | "") return ;;
     esac

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Módulo "Monitor do Sistema": CPU (agregado e por núcleo), memória, swap,
+# Módulo "Monitor do Sistema": CPU (agregado e por núcleo), GPU, memória, swap,
 # disco, rede (só valores em texto, sem gráficos — decisão explícita de
 # escopo do v4.0, ver issue #115) e lista de processos com hierarquia
 # pai/filho + encerrar processo. Equivalente ao módulo Monitor do vega-gtk
@@ -38,7 +38,7 @@ vega::monitor::_recursos_amostra() {
       sleep 2
       continue
     }
-    local cpu memused memtotal swapused swaptotal diskread diskwrite netrx nettx
+    local cpu gpu memused memtotal swapused swaptotal diskread diskwrite netrx nettx
     cpu="$(printf '%s' "$data" | jq -r '.[0][0] | (. * 10 | round) / 10')"
     memused="$(printf '%s' "$data" | jq -r '.[0][1]')"
     memtotal="$(printf '%s' "$data" | jq -r '.[0][2]')"
@@ -48,6 +48,7 @@ vega::monitor::_recursos_amostra() {
     diskwrite="$(printf '%s' "$data" | jq -r '.[0][6]')"
     netrx="$(printf '%s' "$data" | jq -r '.[0][7]')"
     nettx="$(printf '%s' "$data" | jq -r '.[0][8]')"
+    gpu="$(printf '%s' "$data" | jq -r '.[0][10] | if . < 0 then "Uso indisponível" else ((. * 10 | round) / 10 | tostring) + "%" end')"
 
     local now disco_txt rede_txt
     now="$(date +%s)"
@@ -70,6 +71,7 @@ vega::monitor::_recursos_amostra() {
       echo "== $(date '+%H:%M:%S') =="
       echo "CPU: ${cpu}%"
       printf '%s' "$data" | jq -r '.[0][9] | to_entries[] | "  Núcleo \(.key): \(.value | round)%"' 2>/dev/null
+      echo "GPU: ${gpu}"
       echo "Memória: $(vega::monitor::_formatar_bytes "$memused") de $(vega::monitor::_formatar_bytes "$memtotal")"
       if [ "$swaptotal" = "0" ]; then
         echo "Swap: sem swap configurado"

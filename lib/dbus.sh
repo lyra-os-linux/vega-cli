@@ -19,6 +19,22 @@ readonly VEGA_DBUS_BUS_NAME VEGA_DBUS_OBJECT_PATH VEGA_DBUS_TIMEOUT VEGA_DBUS_TR
 # mostrar isso (msgbox etc.). vega::dbus::call só retorna != 0.
 VEGA_DBUS_LAST_ERROR=""
 
+# Locale enviado explicitamente nas chamadas que retornam texto de interface.
+# Nunca deixamos o locale global do serviço decidir a resposta de outro usuário.
+vega::dbus::locale() {
+  local value="${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}"
+  value="${value%%@*}"
+  value="${value%%.*}"
+  value="${value/_/-}"
+  case "${value,,}" in
+  en-us) printf 'en-US' ;;
+  pt-br) printf 'pt-BR' ;;
+  es-es) printf 'es-ES' ;;
+  zh-cn) printf 'zh-CN' ;;
+  *) printf 'en-US' ;;
+  esac
+}
+
 # vega::dbus::call <interface> <method> [assinatura arg...]
 # <interface> é só o sufixo do contrato (ex. "Monitor"), prefixado aqui com
 # org.lyraos.Vega1. Argumentos extras seguem o formato do busctl call:
@@ -37,6 +53,18 @@ VEGA_DBUS_LAST_ERROR=""
 vega::dbus::call() {
   local interface="$1" method="$2"
   shift 2
+  local request_locale
+  request_locale="$(vega::dbus::locale)"
+  case "$interface:$method" in
+  Hardware:Inventory | Hardware:FirmwareStatus | Services:ListServices | Services:ListAllServices)
+    method="${method}Localized"
+    set -- s "$request_locale" "$@"
+    ;;
+  Snapshots:DiffPackages)
+    method="DiffPackagesLocalized"
+    set -- us "${2:?snapshot id missing}" "$request_locale"
+    ;;
+  esac
   local out err_file rc=0
   err_file="$(mktemp)"
   # "--" antes dos argumentos: sem isso, um argumento de dado que comece

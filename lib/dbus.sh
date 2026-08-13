@@ -21,8 +21,26 @@ VEGA_DBUS_LAST_ERROR=""
 
 # Locale enviado explicitamente nas chamadas que retornam texto de interface.
 # Nunca deixamos o locale global do serviço decidir a resposta de outro usuário.
+vega::dbus::_gnome_language() {
+  local username="${SUDO_USER:-${USER:-}}" user_reply user_path language_reply
+  [ -n "$username" ] || return 1
+  user_reply="$(busctl --system call org.freedesktop.Accounts \
+    /org/freedesktop/Accounts org.freedesktop.Accounts \
+    FindUserByName s "$username" 2>/dev/null)" || return 1
+  user_path="${user_reply#*\"}"
+  user_path="${user_path%%\"*}"
+  [ -n "$user_path" ] || return 1
+  language_reply="$(busctl --system get-property org.freedesktop.Accounts \
+    "$user_path" org.freedesktop.Accounts.User Language 2>/dev/null)" || return 1
+  language_reply="${language_reply#*\"}"
+  language_reply="${language_reply%%\"*}"
+  [ -n "$language_reply" ] || return 1
+  printf '%s' "$language_reply"
+}
+
 vega::dbus::locale() {
-  local value="${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}"
+  local value
+  value="$(vega::dbus::_gnome_language)" || value="${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}"
   value="${value%%@*}"
   value="${value%%.*}"
   value="${value/_/-}"

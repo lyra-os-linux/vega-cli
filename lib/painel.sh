@@ -57,9 +57,18 @@ vega::painel::_linha_sistema() {
 }
 
 vega::painel::_linha_atualizacoes() {
-  local count
-  if ! count="$(vega::painel::_count_out0 Software ListNativeUpdates)"; then
+  local data count in_progress error
+  if ! data="$(vega::dbus::call_data Software RequestUpdateCheck)"; then
     printf '%s' "$VEGA_DBUS_LAST_ERROR"
+    return
+  fi
+  count="$(printf '%s' "$data" | jq -r '.[0][4]')"
+  in_progress="$(printf '%s' "$data" | jq -r '.[0][6]')"
+  error="$(printf '%s' "$data" | jq -r '.[0][7]')"
+  if [ -n "$error" ]; then
+    printf 'Falha na última verificação: %s' "$error"
+  elif [ "$in_progress" = true ]; then
+    printf 'Verificando em segundo plano • último estado: %s pendente(s)' "$count"
   elif [ "$count" -eq 0 ]; then
     printf 'Tudo em dia'
   else

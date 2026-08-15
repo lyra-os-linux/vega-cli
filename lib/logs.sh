@@ -4,8 +4,8 @@
 # do vega-gtk (org.lyraos.Vega1.Logs, vega-gtk/src/ui/logs.rs). Sourced
 # pelo entrypoint (bin/vega) — não é executável sozinho.
 #
-# Logs não exige polkit (é leitura do journal, que o usuário já poderia
-# rodar sozinho via journalctl) — nenhuma chamada aqui é mutável.
+# A leitura administrativa exige a ação Polkit própria do vegad. O
+# pkttyagent instalado pelo entrypoint atende a autenticação via SSH.
 
 vega::module_logs() {
   vega::ui::infobox "Carregando unidades do journal…" "Log do Sistema"

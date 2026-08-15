@@ -105,7 +105,7 @@ vega::software::_buscar() {
   local data rc=0
   # Buscas com backend tipo Flathub podem demorar bem mais que uma chamada
   # D-Bus comum, especialmente com cache frio.
-  data="$(VEGA_DBUS_CALL_TIMEOUT=60 vega::dbus::call_data Software Search s "$query")" || rc=$?
+  data="$(VEGA_DBUS_CALL_TIMEOUT=60 vega::dbus::call_data Software SearchNative s "$query")" || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha na busca: $VEGA_DBUS_LAST_ERROR" "Software"
     return
@@ -116,7 +116,7 @@ vega::software::_buscar() {
 vega::software::_listar_instalados() {
   vega::ui::infobox "Carregando pacotes instalados…" "Software"
   local data rc=0
-  data="$(VEGA_DBUS_CALL_TIMEOUT=60 vega::dbus::call_data Software ListInstalled)" || rc=$?
+  data="$(VEGA_DBUS_CALL_TIMEOUT=60 vega::dbus::call_data Software ListNativeInstalled)" || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha ao listar pacotes instalados: $VEGA_DBUS_LAST_ERROR" "Software"
     return
@@ -127,7 +127,7 @@ vega::software::_listar_instalados() {
 vega::software::_listar_atualizacoes() {
   vega::ui::infobox "Verificando atualizações…" "Software"
   local data rc=0
-  data="$(vega::dbus::call_data Software ListUpdates)" || rc=$?
+  data="$(vega::dbus::call_data Software ListNativeUpdates)" || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha ao verificar atualizações: $VEGA_DBUS_LAST_ERROR" "Software"
     return
@@ -341,12 +341,12 @@ vega::module_software() {
     adicionar_repo) vega::software::_adicionar_repositorio || true ;;
     atualizar)
       if vega::ui::yesno "Atualizar todos os pacotes pendentes agora?" "Atualizar tudo"; then
-        vega::software::_run_and_report "Atualizando pacotes…" Software UpdateAll || true
+        vega::software::_run_and_report "Atualizando pacotes…" Software UpdateAllNative || true
       fi
       ;;
     cache)
       if vega::ui::yesno "Limpar o cache de pacotes agora?" "Limpar cache"; then
-        vega::software::_run_and_report "Limpando cache…" Software ClearCache || true
+        vega::software::_run_and_report "Limpando cache…" Software ClearNativeCache || true
       fi
       ;;
     voltar | "") return ;;

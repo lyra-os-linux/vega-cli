@@ -48,7 +48,6 @@ vega::dbus::locale() {
   en-us) printf 'en-US' ;;
   pt-br) printf 'pt-BR' ;;
   es-es) printf 'es-ES' ;;
-  zh-cn) printf 'zh-CN' ;;
   *) printf 'en-US' ;;
   esac
 }

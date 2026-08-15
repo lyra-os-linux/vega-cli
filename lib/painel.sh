@@ -58,7 +58,7 @@ vega::painel::_linha_sistema() {
 
 vega::painel::_linha_atualizacoes() {
   local count
-  if ! count="$(vega::painel::_count_out0 Software ListUpdates)"; then
+  if ! count="$(vega::painel::_count_out0 Software ListNativeUpdates)"; then
     printf '%s' "$VEGA_DBUS_LAST_ERROR"
   elif [ "$count" -eq 0 ]; then
     printf 'Tudo em dia'

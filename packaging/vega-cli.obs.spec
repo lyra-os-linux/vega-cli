@@ -25,7 +25,6 @@ Requires:       dialog
 Requires:       jq
 Requires:       systemd
 Requires:       polkit
-Requires:       sudo
 
 %description
 Interface de terminal do Vega (shell + dialog), para administrar

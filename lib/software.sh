@@ -9,7 +9,6 @@ vega::software::_origin_label() {
   case "$1" in
   official) printf 'Oficial' ;;
   flathub) printf 'Flathub' ;;
-  aur) printf 'Comunidade' ;;
   *) printf '%s' "$1" ;;
   esac
 }

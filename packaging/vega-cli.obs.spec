@@ -41,24 +41,24 @@ frontend é novo.
 sed -i "s/^VEGA_CLI_VERSION=.*/VEGA_CLI_VERSION=\"%{version}\"/" bin/vega
 
 %install
-install -Dm755 bin/vega %{buildroot}%{_prefix}/lib/bin/vega
+install -Dm755 bin/vega %{buildroot}%{_prefix}/lib/vega-cli/bin/vega
 install -d %{buildroot}%{_prefix}/lib/vega-cli/lib
-install -m644 lib/*.sh %{buildroot}%{_prefix}/lib/lib/
-install -m644 lib/theme.dialogrc %{buildroot}%{_prefix}/lib/lib/theme.dialogrc
+install -m644 lib/*.sh %{buildroot}%{_prefix}/lib/vega-cli/lib/
+install -m644 lib/theme.dialogrc %{buildroot}%{_prefix}/lib/vega-cli/lib/theme.dialogrc
 
 # /usr/bin/vega é um symlink pro script real — vega::resolve_root
 # (bin/vega) segue o symlink e resolve VEGA_CLI_ROOT a partir do caminho
 # real, achando lib/ como irmã de bin/.
 install -d %{buildroot}%{_bindir}
-ln -s %{_prefix}/lib/bin/vega %{buildroot}%{_bindir}/vega
+ln -s %{_prefix}/lib/vega-cli/bin/vega %{buildroot}%{_bindir}/vega
 
 %files
 %dir %{_prefix}/lib/vega-cli
 %dir %{_prefix}/lib/vega-cli/bin
 %dir %{_prefix}/lib/vega-cli/lib
-%{_prefix}/lib/bin/vega
-%{_prefix}/lib/lib/*.sh
-%{_prefix}/lib/lib/theme.dialogrc
+%{_prefix}/lib/vega-cli/bin/vega
+%{_prefix}/lib/vega-cli/lib/*.sh
+%{_prefix}/lib/vega-cli/lib/theme.dialogrc
 %{_bindir}/vega
 
 %changelog

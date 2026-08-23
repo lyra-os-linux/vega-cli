@@ -5,7 +5,7 @@
 # O que este script cobre de forma automática e confiável, sem precisar de
 # sessão gráfica nem de interação humana:
 #   1. dialog/jq/busctl presentes;
-#   2. sintaxe de bin/vega e de todo vega-cli/lib/*.sh;
+#   2. sintaxe de bin/vega e de todo lib/*.sh;
 #   3. os libs sourceiam limpo sob `set -euo pipefail` e toda função
 #      vega::module_* esperada está definida (pega regressão de wiring, ex.:
 #      um módulo esquecido em menu.sh apontando pro vega::module_placeholder
@@ -26,7 +26,7 @@
 set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-cli_root="$repo_root/vega-cli"
+cli_root="$repo_root"
 
 echo "[1/4] Dependências de runtime (dialog, jq, busctl)"
 missing=()
@@ -43,7 +43,7 @@ if ! command -v pkttyagent >/dev/null 2>&1; then
   echo "o item de autenticação polkit do checklist manual abaixo)."
 fi
 
-echo "[2/4] Sintaxe de bin/vega e vega-cli/lib/*.sh"
+echo "[2/4] Sintaxe de bin/vega e lib/*.sh"
 bash -n "$cli_root/bin/vega"
 for file in "$cli_root"/lib/*.sh; do
   bash -n "$file"

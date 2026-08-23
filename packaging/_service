@@ -1,0 +1,17 @@
+<services>
+  <!-- Fonte de verdade pro build no OBS. Adaptado do _service compartilhado
+       que o monorepo vega usava antes da quebra em repositórios próprios —
+       agora aponta direto pro repo do vega-cli. -->
+  <service name="tar_scm">
+    <param name="scm">git</param>
+    <param name="url">https://github.com/lyra-os-linux/vega-cli.git</param>
+    <param name="revision">main</param>
+    <param name="match-tag">v*</param>
+    <param name="versionformat">@PARENT_TAG@</param>
+    <param name="versionrewrite-pattern">v(.*)</param>
+    <param name="versionrewrite-replacement">\1</param>
+    <param name="exclude">.git</param>
+    <param name="filename">vega-cli-src</param>
+  </service>
+  <service name="set_version" />
+</services>

@@ -12,7 +12,7 @@ já usados pelo `vega-gtk`; aqui muda só o frontend, que é shell script
 
 - `dialog` — toda a interface
 - `busctl` (do `systemd`, já dependência do resto do projeto) + `jq` —
-  acesso a D-Bus (issue [#103](https://github.com/britors/Vega/issues/103))
+  acesso a D-Bus (issue [#103](https://github.com/lyra-os-linux/vega/issues/103))
 - `polkit` (com `pkttyagent`) — autorização de ações privilegiadas numa
   sessão sem agente gráfico
 

@@ -1,0 +1,29 @@
+name: Contracts
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: vega-cli
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: lyra-os-linux/lyra-vega-dbus
+          path: lyra-vega-dbus
+      - name: Install shell validators
+        run: sudo apt-get update && sudo apt-get install -y jq shellcheck
+      - name: Validate syntax, shell quality and D-Bus calls
+        run: |
+          bash -n vega-cli/bin/vega vega-cli/lib/*.sh vega-cli/scripts/*.sh vega-cli/tests/*.sh
+          shellcheck vega-cli/bin/vega vega-cli/lib/*.sh vega-cli/scripts/*.sh vega-cli/tests/*.sh
+          ./vega-cli/tests/test-dbus.sh
+          python3 ./vega-cli/scripts/check-dbus-contract.py ./lyra-vega-dbus/dbus

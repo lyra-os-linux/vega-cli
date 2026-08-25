@@ -172,7 +172,8 @@ vega::monitor::_processos() {
       ordem+=("$cur_idx,$cur_depth")
       local filhos="${filhos_de[${pids[$cur_idx]}]:-}"
       if [ -n "$filhos" ]; then
-        local -a lista_filhos=($filhos)
+        local -a lista_filhos
+        read -r -a lista_filhos <<<"$filhos"
         local j
         for ((j = ${#lista_filhos[@]} - 1; j >= 0; j--)); do
           pilha+=("${lista_filhos[$j]},$((cur_depth + 1))")

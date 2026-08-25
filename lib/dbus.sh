@@ -190,6 +190,7 @@ vega::dbus::run_transaction() {
   fi
 
   if [ "$finished_success" != "true" ]; then
+    # shellcheck disable=SC2034 # output state consumed by callers after sourcing this library
     VEGA_DBUS_LAST_ERROR="$finished_message"
     return 1
   fi

@@ -82,7 +82,7 @@ vega::users::_remover() {
 
 vega::users::_alterar_admin() {
   local username="$1" is_admin="$2"
-  local novo_admin="true" titulo msg confirm_label
+  local novo_admin="true" titulo msg
   if [ "$is_admin" = "true" ]; then
     novo_admin="false"
     titulo="Remover privilégios administrativos?"

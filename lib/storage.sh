@@ -21,16 +21,16 @@ vega::module_storage() {
       return
     fi
 
-    local -a names paths types fstypes sizes useds avails usepercents mountpoints models removables canmounts canunmounts
+    local -a names paths types fstypes sizes useds usepercents mountpoints models removables canmounts canunmounts
     local -a menu_args=()
     local -a rows
     mapfile -t rows < <(printf '%s' "$data" | jq -r '.[0][] |
       [.[0],.[1],.[2],.[3],.[4],.[5],.[6],(.[7]|tostring),.[8],.[9],(.[10]|tostring),(.[11]|tostring),(.[12]|tostring)] | join("\u001f")')
-    local idx=0 row name path type fstype size used avail usepercent mountpoint model removable canmount canunmount
+    local idx=0 row name path type fstype size used _avail usepercent mountpoint model removable canmount canunmount
     for row in "${rows[@]}"; do
-      IFS=$'\x1f' read -r name path type fstype size used avail usepercent mountpoint model removable canmount canunmount <<<"$row"
+      IFS=$'\x1f' read -r name path type fstype size used _avail usepercent mountpoint model removable canmount canunmount <<<"$row"
       names[idx]="$name"; paths[idx]="$path"; types[idx]="$type"; fstypes[idx]="$fstype"
-      sizes[idx]="$size"; useds[idx]="$used"; avails[idx]="$avail"; usepercents[idx]="$usepercent"
+      sizes[idx]="$size"; useds[idx]="$used"; usepercents[idx]="$usepercent"
       mountpoints[idx]="$mountpoint"; models[idx]="$model"; removables[idx]="$removable"
       canmounts[idx]="$canmount"; canunmounts[idx]="$canunmount"
 

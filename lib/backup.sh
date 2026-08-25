@@ -190,7 +190,8 @@ vega::backup::_ver_snapshots() {
 # vega::backup::_acoes_config <id> <destino> <uuid> <numCaminhos> <frequencia>
 vega::backup::_acoes_config() {
   local id="$1" destino="$2" uuid="$3" npaths="$4" freq="$5"
-  local subtitle="${destino}${uuid:+ • UUID ${uuid}} • ${npaths} caminho(s) • $(vega::backup::_frequencia_label "$freq")"
+  local subtitle
+  subtitle="${destino}${uuid:+ • UUID ${uuid}} • ${npaths} caminho(s) • $(vega::backup::_frequencia_label "$freq")"
 
   local choice
   choice="$(vega::ui::menu "$id" "$subtitle" \

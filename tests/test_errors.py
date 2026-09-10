@@ -30,6 +30,7 @@ class ErrorTests(unittest.TestCase):
         script = '''set -euo pipefail
 source "$TEST_REPO/lib/dbus.sh"
 vega::dbus::locale() { printf 'pt-BR'; }
+vega::dbus::_transaction_helper() { /usr/bin/python3 "$TEST_REPO/tests/transaction-fixture.py" "$@"; }
 for module in backup datetime hardware logs monitor network painel services software storage users; do
   source "$TEST_REPO/lib/$module.sh"
 done
@@ -61,7 +62,7 @@ result=stale
 VEGA_DBUS_LAST_ERROR=old
 rc=0
 vega::dbus::{api} result {args} || rc=$?
-[[ $rc == 9 && -z $result ]]
+[[ $rc == {1 if api == 'run_transaction_into' else 9} && -z $result ]]
 printf '%s' "$VEGA_DBUS_LAST_ERROR"
 ''', {'default': {'error': raw}})
                     self.assertIn(expected, out)
@@ -113,7 +114,7 @@ done
         for signal, expected in [([7, False, 'snapshot failed'], 'snapshot failed'),
                                  ([7, False, ''], 'sem detalhes'),
                                  (None, 'Tempo esgotado'),
-                                 ([8, True, 'other'], 'não corresponde')]:
+                                 ([8, True, 'other'], 'Tempo esgotado')]:
             with self.subTest(signal=signal):
                 out = self.run_shell('''
 result=old
@@ -187,6 +188,9 @@ mktemp() { return 1; }
 result=old
 if vega::dbus::call_data_into result System Ping; then exit 1; fi
 [[ -z $result ]]
+VEGA_DBUS_TRANSACTION_KEY_PENDING='["stale key"]'
+if vega::dbus::run_transaction_into result Software AddRepo TransactionFinished ss repo url; then exit 1; fi
+[[ -z $VEGA_DBUS_TRANSACTION_KEY_PENDING ]]
 printf '%s' "$VEGA_DBUS_LAST_ERROR"
 ''')
         self.assertIn('preparar', out)

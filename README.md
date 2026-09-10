@@ -13,6 +13,8 @@ já usados pelo `vega-gtk`; aqui muda só o frontend, que é shell script
 - `dialog` — toda a interface
 - `busctl` (do `systemd`, já dependência do resto do projeto) + `jq` —
   acesso a D-Bus (issue [#103](https://github.com/lyra-os-linux/vega/issues/103))
+- Python 3 e PyGObject/Gio (`python3-gobject` no openSUSE) — assinatura e
+  correlação das transações, sem dependência de GTK ou sessão gráfica
 - `polkit` (com `pkttyagent`) — autorização de ações privilegiadas numa
   sessão sem agente gráfico
 
@@ -90,6 +92,32 @@ python3 scripts/check-dbus-contract.py ../lyra-vega-dbus/dbus
 A cobertura inclui erros Polkit/daemon/backend, status de saída, limpeza de
 erro antigo, JSON inválido, transações, telas consumidoras e falha seguida de
 sucesso em lote. Ela verifica transporte e apresentação das respostas, não
-a autorização Polkit real. A correlação e a sincronização da espera dos sinais
-de transação continuam sendo tratadas separadamente na
-[issue #20](https://github.com/lyra-os-linux/vega-cli/issues/20).
+a autorização Polkit real. As transações são verificadas também com conexões Gio reais em um barramento
+D-Bus privado. O serviço de teste apenas emite respostas/sinais; não executa
+operações no sistema. Esses testes precisam de `dbus-daemon` e Python com Gio.
+
+## Espera pelas transações
+
+O helper `lib/transaction.py` mantém uma conexão D-Bus dedicada. Ele instala os
+handlers locais e aguarda a resposta de `AddMatch` do barramento antes de
+iniciar a operação. Resolve e verifica o proprietário único de `org.lyraos.Vega1`
+e chama essa instância, sem redirecionar a chamada para um daemon substituto.
+Conclusões anteriores à resposta do método ficam numa fila limitada; depois,
+só o ID retornado pode concluir a espera. Sinais de outros IDs são ignorados.
+
+O prazo absoluto de 900 segundos cobre ativação, assinatura, chamada e espera
+após abrir a conexão. Cada chamada D-Bus também respeita seu timeout (30 segundos
+por padrão). Sinais intercalados não renovam o prazo. Perda do nome do daemon,
+reinício, desconexão, timeout ou interrupção encerram a espera e fecham a
+conexão, removendo suas assinaturas. Não existe processo de escuta separado.
+
+“Resultado não confirmado” não significa que a operação foi desfeita. O CLI
+não repete, cancela ou reverte a operação automaticamente: confira o estado do
+sistema antes de tentar novamente. O protocolo atual não oferece consulta
+persistente do resultado após reinício do daemon.
+
+AddRepo usa o mesmo mecanismo: só uma chave pendente do mesmo proprietário,
+ID e nome de repositório pode abrir a confirmação. O helper aceita os argumentos
+string usados pelas transações atuais do CLI (ou nenhum argumento); outras
+assinaturas são recusadas antes da conexão. Consultas síncronas seguem usando
+`busctl`; os métodos e sinais do contrato não foram alterados.

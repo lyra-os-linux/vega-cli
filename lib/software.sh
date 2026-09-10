@@ -234,14 +234,8 @@ vega::software::_confirmar_confiar_chave() {
   vega::software::_run_and_report "Confiando na chave…" Software TrustRepoKey ss "$repo" "$key_id"
 }
 
-# vega::software::_adicionar_repositorio pede nome+URL e chama AddRepo.
-# Diferente de vega::dbus::run_transaction (que só espera um sinal), AddRepo
-# pode emitir RepoKeyPending ANTES de TransactionFinished (com
-# success=false) quando o repositório está assinado por uma chave ainda não
-# confiada — então dois `busctl wait` rodam em paralelo, um por sinal, e a
-# gente confere qual chegou depois que TransactionFinished aparecer. Mesmo
-# desenho do SoftwareEvent::KeyPending na UI GTK
-# (vega-gtk/src/application.rs, monitor_add_repo_transaction).
+# AddRepo compartilha a assinatura confirmada e a correlação de transação
+# do helper. Uma chave pendente de outro ID/daemon nunca abre confirmação.
 vega::software::_adicionar_repositorio() {
   local name url
   name="$(vega::ui::inputbox "Adicionar repositório" "Nome do repositório:")" || return
@@ -251,72 +245,23 @@ vega::software::_adicionar_repositorio() {
 
   vega::ui::infobox "Adicionando $name…" "Software"
 
-  local finished_out keypending_out finished_pid keypending_pid
-  finished_out="$(mktemp)"
-  keypending_out="$(mktemp)"
-  busctl --system --json=short wait "$VEGA_DBUS_OBJECT_PATH" \
-    "$VEGA_DBUS_BUS_NAME.Software" TransactionFinished \
-    >"$finished_out" 2>/dev/null &
-  finished_pid=$!
-  busctl --system --json=short wait "$VEGA_DBUS_OBJECT_PATH" \
-    "$VEGA_DBUS_BUS_NAME.Software" RepoKeyPending \
-    >"$keypending_out" 2>/dev/null &
-  keypending_pid=$!
-  sleep 0.2
-
-  local start_json start_rc=0
-  vega::dbus::call_into start_json Software AddRepo ss "$name" "$url" || start_rc=$?
-  if [ "$start_rc" -ne 0 ]; then
-    kill "$finished_pid" "$keypending_pid" >/dev/null 2>&1 || true
-    wait "$finished_pid" "$keypending_pid" 2>/dev/null || true
-    rm -f "$finished_out" "$keypending_out"
-    vega::ui::msgbox "Falha: $VEGA_DBUS_LAST_ERROR" "Software"
+  local result
+  if vega::dbus::run_transaction_into result Software AddRepo TransactionFinished ss "$name" "$url"; then
+    vega::ui::msgbox "$result" "Software"
     return
   fi
-  local tx_id
-  tx_id="$(printf '%s' "$start_json" | jq -r '.data[0]')"
-
-  local elapsed=0
-  while kill -0 "$finished_pid" 2>/dev/null; do
-    if [ "$elapsed" -ge "$VEGA_DBUS_TRANSACTION_TIMEOUT" ]; then
-      kill "$finished_pid" >/dev/null 2>&1 || true
-      break
-    fi
-    sleep 1
-    elapsed=$((elapsed + 1))
-  done
-  kill "$keypending_pid" >/dev/null 2>&1 || true
-  wait "$finished_pid" "$keypending_pid" 2>/dev/null || true
-
-  if [ ! -s "$finished_out" ]; then
-    rm -f "$finished_out" "$keypending_out"
-    vega::ui::msgbox "Tempo esgotado aguardando a conclusão da transação #$tx_id." "Software"
-    return
-  fi
-
-  local finished_success finished_message
-  finished_success="$(jq -r '.data[1]' <"$finished_out")"
-  finished_message="$(jq -r '.data[2]' <"$finished_out")"
-  rm -f "$finished_out"
-
-  if [ "$finished_success" = "true" ]; then
-    vega::ui::msgbox "$finished_message" "Software"
-    rm -f "$keypending_out"
-    return
-  fi
-
-  if [ -s "$keypending_out" ]; then
+  if [ -n "$VEGA_DBUS_TRANSACTION_KEY_PENDING" ]; then
     local key_repo key_id key_fingerprint key_user
-    key_repo="$(jq -r '.data[1]' <"$keypending_out")"
-    key_id="$(jq -r '.data[2]' <"$keypending_out")"
-    key_fingerprint="$(jq -r '.data[3]' <"$keypending_out")"
-    key_user="$(jq -r '.data[4]' <"$keypending_out")"
-    rm -f "$keypending_out"
-    vega::software::_confirmar_confiar_chave "$key_repo" "$key_id" "$key_fingerprint" "$key_user"
-  else
-    rm -f "$keypending_out"
-    vega::ui::msgbox "Falha: $finished_message" "Software"
+    key_repo="$(printf '%s' "$VEGA_DBUS_TRANSACTION_KEY_PENDING" | jq -r '.[0]')"
+    key_id="$(printf '%s' "$VEGA_DBUS_TRANSACTION_KEY_PENDING" | jq -r '.[1]')"
+    key_fingerprint="$(printf '%s' "$VEGA_DBUS_TRANSACTION_KEY_PENDING" | jq -r '.[2]')"
+    key_user="$(printf '%s' "$VEGA_DBUS_TRANSACTION_KEY_PENDING" | jq -r '.[3]')"
+    if [ "$key_repo" = "$name" ]; then
+      vega::software::_confirmar_confiar_chave "$key_repo" "$key_id" "$key_fingerprint" "$key_user"
+      return
+    fi
   fi
+  vega::ui::msgbox "Falha: $VEGA_DBUS_LAST_ERROR" "Software"
 }
 
 vega::module_software() {

@@ -3,7 +3,7 @@
 # packaging/vega-cli.obs.spec para a variante consumida pelo OBS via
 # tar_scm. Versionamento via --define version (ver Version abaixo).
 #
-# vega-cli é puro shell script (bash + dialog) — sem etapa de compilação,
+# vega-cli usa Bash/dialog e um helper Python/Gio — sem compilação,
 # BuildArch: noarch e sem makedepends de toolchain.
 %{!?version: %define version 0.0.0}
 
@@ -20,6 +20,8 @@ Requires:       dialog
 Requires:       jq
 Requires:       systemd
 Requires:       polkit
+Requires:       python3
+Requires:       python3-gobject
 
 %description
 Interface de terminal do Vega (shell + dialog), para administrar
@@ -38,7 +40,7 @@ sed -i "s/^VEGA_CLI_VERSION=.*/VEGA_CLI_VERSION=\"%{version}\"/" bin/vega
 %install
 install -Dm755 bin/vega %{buildroot}%{_prefix}/lib/vega-cli/bin/vega
 install -d %{buildroot}%{_prefix}/lib/vega-cli/lib
-install -m644 lib/*.sh %{buildroot}%{_prefix}/lib/vega-cli/lib/
+install -m644 lib/*.sh lib/transaction.py %{buildroot}%{_prefix}/lib/vega-cli/lib/
 install -m644 lib/theme.dialogrc %{buildroot}%{_prefix}/lib/vega-cli/lib/theme.dialogrc
 
 # /usr/bin/vega é um symlink pro script real — vega::resolve_root
@@ -53,6 +55,7 @@ ln -s %{_prefix}/lib/vega-cli/bin/vega %{buildroot}%{_bindir}/vega
 %dir %{_prefix}/lib/vega-cli/lib
 %{_prefix}/lib/vega-cli/bin/vega
 %{_prefix}/lib/vega-cli/lib/*.sh
+%{_prefix}/lib/vega-cli/lib/transaction.py
 %{_prefix}/lib/vega-cli/lib/theme.dialogrc
 %{_bindir}/vega
 

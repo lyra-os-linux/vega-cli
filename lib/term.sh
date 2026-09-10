@@ -26,6 +26,7 @@ vega::require_dbus_tools() {
   local missing=()
   command -v busctl >/dev/null 2>&1 || missing+=("busctl (systemd)")
   command -v jq >/dev/null 2>&1 || missing+=("jq")
+  /usr/bin/python3 -c 'from gi.repository import Gio, GLib' >/dev/null 2>&1 || missing+=("python3 / python3-gobject (Gio)")
   if [ "${#missing[@]}" -gt 0 ]; then
     echo "vega: dependência(s) faltando: ${missing[*]}." >&2
     echo "Instale o(s) pacote(s) da sua distribuição e tente de novo." >&2

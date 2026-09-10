@@ -20,12 +20,12 @@ jobs:
           repository: lyra-os-linux/lyra-vega-dbus
           path: lyra-vega-dbus
       - name: Install shell validators
-        run: sudo apt-get update && sudo apt-get install -y jq shellcheck
+        run: sudo apt-get update && sudo apt-get install -y jq shellcheck python3-gi gir1.2-glib-2.0 dbus-daemon
       - name: Validate syntax, shell quality and D-Bus calls
         working-directory: vega-cli
         run: |
           for file in bin/vega lib/*.sh scripts/*.sh tests/*.sh; do bash -n "$file"; done
           shellcheck bin/vega lib/*.sh scripts/*.sh tests/*.sh
           ./tests/test-dbus.sh
-          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
+          /usr/bin/python3 -B -m unittest discover -s tests -v
           python3 scripts/check-dbus-contract.py ../lyra-vega-dbus/dbus

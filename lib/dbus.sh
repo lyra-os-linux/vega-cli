@@ -57,6 +57,7 @@ vega::dbus::call_data_into() {
   vega::dbus::_capture "$1" vega::dbus::call_data "${@:2}"
 }
 vega::dbus::run_transaction_into() {
+  VEGA_DBUS_TRANSACTION_KEY_PENDING=""
   vega::dbus::_capture "$1" vega::dbus::run_transaction "${@:2}"
 }
 
@@ -172,84 +173,41 @@ vega::dbus::call_data() {
 # restore). O método em si só confirma que a transação começou; sem esperar
 # o sinal não dá pra saber se ela terminou nem se deu certo.
 #
-# `busctl wait` escuta o sinal sem precisar de privilégio de "monitor"
-# (diferente de `busctl monitor`, que exige acesso de eavesdrop e falha pra
-# usuário comum) — mas registrar esse wait DEPOIS de chamar o método
-# arrisca perder transações rápidas que já terminam antes da gente começar
-# a escutar; por isso o wait começa em background antes da chamada.
-#
-# Em sucesso, imprime a mensagem final (a mesma do sinal) em stdout e
-# retorna 0. Em erro — da chamada inicial, de timeout (ver nota abaixo) ou
-# de transação que terminou com success=false — retorna 1 e deixa a
-# mensagem em VEGA_DBUS_LAST_ERROR.
+# O helper usa uma conexão dedicada Gio e confirma AddMatch antes de chamar
+# o método. Filtra por unique owner + transactionId e mantém prazo absoluto.
+# RepoKeyPending, quando presente, vem apenas da mesma transação AddRepo.
+VEGA_DBUS_TRANSACTION_KEY_PENDING=""
+
+vega::dbus::_transaction_helper() {
+  /usr/bin/python3 "${BASH_SOURCE[0]%/*}/transaction.py" "$@"
+}
+
 vega::dbus::run_transaction() {
   VEGA_DBUS_LAST_ERROR=""
-  local interface="$1" method="$2" finished_signal="$3"
-  shift 3
-
-  local wait_out wait_pid
-  wait_out="$(mktemp)" || {
+  VEGA_DBUS_TRANSACTION_KEY_PENDING=""
+  local reply err_file rc=0
+  err_file="$(mktemp)" || {
     VEGA_DBUS_LAST_ERROR="Não foi possível preparar a espera da transação."
     return 1
   }
-  busctl --system --json=short wait "$VEGA_DBUS_OBJECT_PATH" \
-    "$VEGA_DBUS_BUS_NAME.$interface" "$finished_signal" \
-    >"$wait_out" 2>/dev/null &
-  wait_pid=$!
-  # Pequena folga pro busctl terminar de registrar o match no bus antes da
-  # transação começar — não elimina a corrida, só encolhe a janela.
-  sleep 0.2
-
-  local start_json start_rc=0
-  vega::dbus::call_into start_json "$interface" "$method" "$@" || start_rc=$?
-  if [ "$start_rc" -ne 0 ]; then
-    kill "$wait_pid" >/dev/null 2>&1 || true
-    wait "$wait_pid" 2>/dev/null || true
-    rm -f "$wait_out"
-    return "$start_rc"
-  fi
-  local tx_id
-  tx_id="$(printf '%s' "$start_json" | jq -r '.data[0]')"
-
-  # `busctl wait` some sozinho depois do --timeout do próprio comando (que
-  # não controlamos aqui de forma fina): se o tempo estourar sem sinal
-  # nenhum, ele sai com status 0 e stdout VAZIO — sem essa checagem de
-  # arquivo vazio, um timeout silencioso pareceria sucesso.
-  local elapsed=0
-  while kill -0 "$wait_pid" 2>/dev/null; do
-    if [ "$elapsed" -ge "$VEGA_DBUS_TRANSACTION_TIMEOUT" ]; then
-      kill "$wait_pid" >/dev/null 2>&1 || true
-      break
-    fi
-    sleep 1
-    elapsed=$((elapsed + 1))
-  done
-  wait "$wait_pid" 2>/dev/null || true
-
-  if [ ! -s "$wait_out" ]; then
-    rm -f "$wait_out"
-    VEGA_DBUS_LAST_ERROR="Tempo esgotado aguardando a conclusão da transação #$tx_id (nenhum sinal recebido do vegad)."
+  reply="$(vega::dbus::_transaction_helper \
+    --timeout "$VEGA_DBUS_TRANSACTION_TIMEOUT" \
+    --call-timeout "${VEGA_DBUS_CALL_TIMEOUT:-$VEGA_DBUS_TIMEOUT}" -- "$@" 2>"$err_file")" || rc=$?
+  if ! printf '%s' "$reply" | jq -e 'type == "object" and (.success | type == "boolean") and (.message | type == "string")' >/dev/null 2>&1; then
+    VEGA_DBUS_LAST_ERROR="$(vega::dbus::_friendly_error "$(<"$err_file")")"
+    rm -f -- "$err_file"
     return 1
   fi
-
-  local finished_id finished_success finished_message
-  finished_id="$(jq -r '.data[0]' <"$wait_out")"
-  finished_success="$(jq -r '.data[1]' <"$wait_out")"
-  finished_message="$(jq -r '.data[2]' <"$wait_out")"
-  rm -f "$wait_out"
-
-  if [ "$finished_id" != "$tx_id" ]; then
-    VEGA_DBUS_LAST_ERROR="Sinal de transação recebido não corresponde (esperado #$tx_id, recebido #$finished_id) — outra transação pode estar em andamento no mesmo vegad."
-    return 1
+  rm -f -- "$err_file"
+  if [ "$rc" -eq 0 ] && [ "$(printf '%s' "$reply" | jq -r '.success')" = true ]; then
+    printf '%s' "$reply" | jq -j '.message'
+    return 0
   fi
-
-  if [ "$finished_success" != "true" ]; then
-    # shellcheck disable=SC2034 # output state consumed by callers after sourcing this library
-    VEGA_DBUS_LAST_ERROR="${finished_message:-A transação falhou sem detalhes do vegad.}"
-    return 1
-  fi
-
-  printf '%s' "$finished_message"
+  # shellcheck disable=SC2034 # output consumed by the Software module
+  VEGA_DBUS_TRANSACTION_KEY_PENDING="$(printf '%s' "$reply" | jq -c '.key_pending // empty')"
+  # shellcheck disable=SC2034 # output consumed by the calling module
+  VEGA_DBUS_LAST_ERROR="$(vega::dbus::_friendly_error "$(printf '%s' "$reply" | jq -r '.message')")"
+  return 1
 }
 
 # Traduz os erros mais comuns do busctl (vegad fora do ar, timeout, polkit

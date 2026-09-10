@@ -19,6 +19,47 @@ readonly VEGA_DBUS_BUS_NAME VEGA_DBUS_OBJECT_PATH VEGA_DBUS_TIMEOUT VEGA_DBUS_TR
 # mostrar isso (msgbox etc.). vega::dbus::call só retorna != 0.
 VEGA_DBUS_LAST_ERROR=""
 
+# Capture stdout while running the function in THIS shell, so its error state
+# survives. Only the file read uses command substitution (same trailing-newline
+# behavior as Bash's $(...)); no stateful D-Bus function runs in a subshell.
+# Output names must be ordinary scalar variables. The __vega_capture_ prefix
+# is reserved for this helper's locals to avoid Bash dynamic-scope collisions.
+vega::dbus::_capture() {
+  local __vega_capture_name="${1:-}"
+  shift
+  VEGA_DBUS_LAST_ERROR=""
+  if [[ ! $__vega_capture_name =~ ^[a-zA-Z_][a-zA-Z_0-9]*$ ||
+        $__vega_capture_name == __vega_capture_* ||
+        $__vega_capture_name == VEGA_DBUS_* ]]; then
+    VEGA_DBUS_LAST_ERROR="Variável de saída inválida para chamada D-Bus."
+    return 2
+  fi
+  printf -v "$__vega_capture_name" '%s' ""
+  local __vega_capture_file __vega_capture_rc=0
+  __vega_capture_file="$(mktemp)" || {
+    VEGA_DBUS_LAST_ERROR="Não foi possível preparar a saída da chamada D-Bus."
+    return 1
+  }
+  "$@" >"$__vega_capture_file" || __vega_capture_rc=$?
+  if [ "$__vega_capture_rc" -eq 0 ]; then
+    printf -v "$__vega_capture_name" '%s' "$(<"$__vega_capture_file")"
+  fi
+  rm -f -- "$__vega_capture_file"
+  return "$__vega_capture_rc"
+}
+
+# Prefer these APIs when the caller needs both a result and LAST_ERROR.
+# Usage: vega::dbus::call_data_into data System Ping
+vega::dbus::call_into() {
+  vega::dbus::_capture "$1" vega::dbus::call "${@:2}"
+}
+vega::dbus::call_data_into() {
+  vega::dbus::_capture "$1" vega::dbus::call_data "${@:2}"
+}
+vega::dbus::run_transaction_into() {
+  vega::dbus::_capture "$1" vega::dbus::run_transaction "${@:2}"
+}
+
 # Locale enviado explicitamente nas chamadas que retornam texto de interface.
 # Nunca deixamos o locale global do serviço decidir a resposta de outro usuário.
 vega::dbus::_gnome_language() {
@@ -68,6 +109,7 @@ vega::dbus::locale() {
 # não imprime nada, seta VEGA_DBUS_LAST_ERROR e retorna o código de saída
 # do busctl (sempre != 0).
 vega::dbus::call() {
+  VEGA_DBUS_LAST_ERROR=""
   local interface="$1" method="$2"
   shift 2
   local request_locale
@@ -83,7 +125,10 @@ vega::dbus::call() {
     ;;
   esac
   local out err_file rc=0
-  err_file="$(mktemp)"
+  err_file="$(mktemp)" || {
+    VEGA_DBUS_LAST_ERROR="Não foi possível preparar a chamada D-Bus."
+    return 1
+  }
   # "--" antes dos argumentos: sem isso, um argumento de dado que comece
   # com "-" (ex.: o filtro de período "-1hour" do módulo Logs) é lido pelo
   # parser de opções do próprio busctl em vez de como valor — busctl
@@ -107,9 +152,14 @@ vega::dbus::call() {
 # retorno (campo "data" do --json=short) — a forma mais comum de consumir
 # a resposta nos módulos.
 vega::dbus::call_data() {
-  local raw
-  raw="$(vega::dbus::call "$@")" || return $?
-  printf '%s' "$raw" | jq -c '.data'
+  local raw parsed rc=0
+  vega::dbus::call_into raw "$@" || return $?
+  parsed="$(printf '%s' "$raw" | jq -ce '.data | if type == "array" then . else error("invalid data") end' 2>/dev/null)" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    VEGA_DBUS_LAST_ERROR="Resposta JSON inválida recebida do vegad."
+    return "$rc"
+  fi
+  printf '%s\n' "$parsed"
 }
 
 # vega::dbus::run_transaction <interface> <método> <sinal-finished> [assinatura arg...]
@@ -133,11 +183,15 @@ vega::dbus::call_data() {
 # de transação que terminou com success=false — retorna 1 e deixa a
 # mensagem em VEGA_DBUS_LAST_ERROR.
 vega::dbus::run_transaction() {
+  VEGA_DBUS_LAST_ERROR=""
   local interface="$1" method="$2" finished_signal="$3"
   shift 3
 
   local wait_out wait_pid
-  wait_out="$(mktemp)"
+  wait_out="$(mktemp)" || {
+    VEGA_DBUS_LAST_ERROR="Não foi possível preparar a espera da transação."
+    return 1
+  }
   busctl --system --json=short wait "$VEGA_DBUS_OBJECT_PATH" \
     "$VEGA_DBUS_BUS_NAME.$interface" "$finished_signal" \
     >"$wait_out" 2>/dev/null &
@@ -147,7 +201,7 @@ vega::dbus::run_transaction() {
   sleep 0.2
 
   local start_json start_rc=0
-  start_json="$(vega::dbus::call "$interface" "$method" "$@")" || start_rc=$?
+  vega::dbus::call_into start_json "$interface" "$method" "$@" || start_rc=$?
   if [ "$start_rc" -ne 0 ]; then
     kill "$wait_pid" >/dev/null 2>&1 || true
     wait "$wait_pid" 2>/dev/null || true
@@ -191,7 +245,7 @@ vega::dbus::run_transaction() {
 
   if [ "$finished_success" != "true" ]; then
     # shellcheck disable=SC2034 # output state consumed by callers after sourcing this library
-    VEGA_DBUS_LAST_ERROR="$finished_message"
+    VEGA_DBUS_LAST_ERROR="${finished_message:-A transação falhou sem detalhes do vegad.}"
     return 1
   fi
 
@@ -214,7 +268,8 @@ vega::dbus::_friendly_error() {
     echo "Ação não autorizada (autenticação polkit recusada ou cancelada)."
     ;;
   *)
-    echo "${msg#Call failed: }"
+    msg="${msg#Call failed: }"
+    printf '%s\n' "${msg:-A chamada ao vegad falhou sem detalhes.}"
     ;;
   esac
 }

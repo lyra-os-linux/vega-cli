@@ -49,3 +49,47 @@ alterar a estrutura do menu.
 
 Precisa de um terminal interativo real (TTY) — não roda com stdin/stdout
 redirecionado para um pipe ou arquivo.
+
+## Resultados e erros de D-Bus
+
+Os módulos recebem resultados por variável de saída para manter status e
+mensagem de erro no mesmo processo Bash:
+
+```bash
+local data
+if vega::dbus::call_data_into data System Ping; then
+  printf '%s\n' "$data"
+else
+  vega::ui::msgbox "$VEGA_DBUS_LAST_ERROR" "Vega"
+fi
+```
+
+`call_into` recebe o JSON completo; `call_data_into`, o array `data`;
+`run_transaction_into`, a mensagem final da transação. O primeiro argumento
+é o nome de uma variável escalar gravável do chamador. Os prefixos
+`__vega_capture_` e `VEGA_DBUS_` são reservados. A captura usa um arquivo
+temporário privado e remove as quebras de linha finais como `$(...)`.
+Na falha, a saída fica vazia e `VEGA_DBUS_LAST_ERROR` contém o motivo atual;
+uma chamada bem-sucedida limpa o erro anterior. Lotes devem salvar a última
+falha antes de iniciar a chamada seguinte.
+
+As variantes sem `_into` continuam disponíveis em stdout, mas capturá-las
+com `$(...)`, pipes ou process substitution isola suas variáveis no subshell.
+Não use esse padrão quando precisar consultar `VEGA_DBUS_LAST_ERROR` depois.
+Os helpers do painel formatam a mensagem de erro antes de retornar seu texto.
+
+Os testes usam `busctl` e diálogos simulados, sem acessar o barramento do
+sistema ou executar operações administrativas:
+
+```bash
+./tests/test-dbus.sh
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
+python3 scripts/check-dbus-contract.py ../lyra-vega-dbus/dbus
+```
+
+A cobertura inclui erros Polkit/daemon/backend, status de saída, limpeza de
+erro antigo, JSON inválido, transações, telas consumidoras e falha seguida de
+sucesso em lote. Ela verifica transporte e apresentação das respostas, não
+a autorização Polkit real. A correlação e a sincronização da espera dos sinais
+de transação continuam sendo tratadas separadamente na
+[issue #20](https://github.com/lyra-os-linux/vega-cli/issues/20).

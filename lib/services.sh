@@ -81,7 +81,7 @@ vega::services::_listar() {
   while true; do
     vega::ui::infobox "Carregando serviços…" "Serviços"
     local data rc=0
-    data="$(vega::dbus::call_data Services "$metodo")" || rc=$?
+    vega::dbus::call_data_into data Services "$metodo" || rc=$?
     if [ "$rc" -ne 0 ]; then
       vega::ui::msgbox "Falha ao listar serviços: $VEGA_DBUS_LAST_ERROR" "Serviços"
       return

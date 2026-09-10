@@ -21,7 +21,7 @@ vega::software::_run_and_report() {
   shift 3
   vega::ui::infobox "$wait_message" "Software"
   local result rc=0
-  result="$(vega::dbus::run_transaction "$interface" "$method" TransactionFinished "$@")" || rc=$?
+  vega::dbus::run_transaction_into result "$interface" "$method" TransactionFinished "$@" || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha: $VEGA_DBUS_LAST_ERROR" "Software"
   else
@@ -104,7 +104,7 @@ vega::software::_buscar() {
   local data rc=0
   # Buscas com backend tipo Flathub podem demorar bem mais que uma chamada
   # D-Bus comum, especialmente com cache frio.
-  data="$(VEGA_DBUS_CALL_TIMEOUT=60 vega::dbus::call_data Software SearchNative s "$query")" || rc=$?
+  VEGA_DBUS_CALL_TIMEOUT=60 vega::dbus::call_data_into data Software SearchNative s "$query" || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha na busca: $VEGA_DBUS_LAST_ERROR" "Software"
     return
@@ -115,7 +115,7 @@ vega::software::_buscar() {
 vega::software::_listar_instalados() {
   vega::ui::infobox "Carregando pacotes instalados…" "Software"
   local data rc=0
-  data="$(VEGA_DBUS_CALL_TIMEOUT=60 vega::dbus::call_data Software ListNativeInstalled)" || rc=$?
+  VEGA_DBUS_CALL_TIMEOUT=60 vega::dbus::call_data_into data Software ListNativeInstalled || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha ao listar pacotes instalados: $VEGA_DBUS_LAST_ERROR" "Software"
     return
@@ -126,7 +126,7 @@ vega::software::_listar_instalados() {
 vega::software::_listar_atualizacoes() {
   vega::ui::infobox "Verificando atualizações…" "Software"
   local data rc=0
-  data="$(vega::dbus::call_data Software ListNativeUpdates)" || rc=$?
+  vega::dbus::call_data_into data Software ListNativeUpdates || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha ao verificar atualizações: $VEGA_DBUS_LAST_ERROR" "Software"
     return
@@ -145,7 +145,7 @@ vega::software::_listar_atualizacoes() {
 vega::software::_repositorios() {
   vega::ui::infobox "Carregando repositórios…" "Software"
   local data rc=0
-  data="$(vega::dbus::call_data Software ListRepos)" || rc=$?
+  vega::dbus::call_data_into data Software ListRepos || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha ao listar repositórios: $VEGA_DBUS_LAST_ERROR" "Software"
     return
@@ -190,14 +190,17 @@ vega::software::_repositorios() {
     now_checked["$c"]=1
   done
 
-  local changed=0 failed=0 was is
+  local changed=0 failed=0 was is last_failure=""
   for name in "${names[@]}"; do
     was="${original_enabled[$name]}"
     is="false"
     [ -n "${now_checked[$name]:-}" ] && is="true"
     if [ "$was" != "$is" ]; then
       changed=$((changed + 1))
-      vega::dbus::call Software SetRepoEnabled sb "$name" "$is" >/dev/null || failed=$((failed + 1))
+      if ! vega::dbus::call Software SetRepoEnabled sb "$name" "$is" >/dev/null; then
+        failed=$((failed + 1))
+        last_failure="$VEGA_DBUS_LAST_ERROR"
+      fi
     fi
   done
 
@@ -207,7 +210,7 @@ vega::software::_repositorios() {
   if [ "$failed" -eq 0 ]; then
     vega::ui::msgbox "$changed repositório(s) atualizado(s)." "Repositórios"
   else
-    vega::ui::msgbox "$failed de $changed alteração(ões) falharam. Última falha: $VEGA_DBUS_LAST_ERROR" "Repositórios"
+    vega::ui::msgbox "$failed de $changed alteração(ões) falharam. Última falha: $last_failure" "Repositórios"
   fi
 }
 
@@ -262,7 +265,7 @@ vega::software::_adicionar_repositorio() {
   sleep 0.2
 
   local start_json start_rc=0
-  start_json="$(vega::dbus::call Software AddRepo ss "$name" "$url")" || start_rc=$?
+  vega::dbus::call_into start_json Software AddRepo ss "$name" "$url" || start_rc=$?
   if [ "$start_rc" -ne 0 ]; then
     kill "$finished_pid" "$keypending_pid" >/dev/null 2>&1 || true
     wait "$finished_pid" "$keypending_pid" 2>/dev/null || true

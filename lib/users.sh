@@ -130,7 +130,7 @@ vega::module_users() {
   while true; do
     vega::ui::infobox "Carregando usuários…" "Usuários"
     local data rc=0
-    data="$(vega::dbus::call_data Users ListUsers)" || rc=$?
+    vega::dbus::call_data_into data Users ListUsers || rc=$?
     if [ "$rc" -ne 0 ]; then
       vega::ui::msgbox "Falha ao listar usuários: $VEGA_DBUS_LAST_ERROR" "Usuários"
       return

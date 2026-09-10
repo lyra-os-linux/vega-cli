@@ -13,19 +13,20 @@
 # não escrever nada no stdout, `jq '.[0]'` lendo stdin vazio ainda sai com
 # status 0, o que mascararia o erro original.
 
-# vega::painel::_count_out0 <interface> <método>
+# vega::painel::_count_out0 <variável de saída> <interface> <método>
 # Chama um método cujo único retorno é um array de structs (ex.
-# ListUpdates, ListConfigs) e imprime a quantidade de itens. Retorna != 0
+# ListUpdates, ListConfigs) e atribui a quantidade de itens. Retorna != 0
 # em erro de D-Bus, com a mensagem em $VEGA_DBUS_LAST_ERROR.
 vega::painel::_count_out0() {
-  local data
-  data="$(vega::dbus::call_data "$@")" || return 1
-  printf '%s' "$data" | jq -r '.[0] | length'
+  local count_target="$1" data
+  shift
+  vega::dbus::call_data_into data "$@" || return 1
+  printf -v "$count_target" '%s' "$(printf '%s' "$data" | jq -r '.[0] | length')"
 }
 
 vega::painel::_linha_backend() {
   local ping_json version_json distro_json version distro
-  if ! ping_json="$(vega::dbus::call_data System Ping)"; then
+  if ! vega::dbus::call_data_into ping_json System Ping; then
     printf 'vegad indisponível: %s' "$VEGA_DBUS_LAST_ERROR"
     return 1
   fi
@@ -34,12 +35,12 @@ vega::painel::_linha_backend() {
     return 1
   fi
 
-  if version_json="$(vega::dbus::call_data System Version)"; then
+  if vega::dbus::call_data_into version_json System Version; then
     version="$(printf '%s' "$version_json" | jq -r '.[0]')"
   else
     version="?"
   fi
-  if distro_json="$(vega::dbus::call_data System Distro)"; then
+  if vega::dbus::call_data_into distro_json System Distro; then
     distro="$(printf '%s' "$distro_json" | jq -r '.[0]')"
   else
     distro="?"
@@ -49,7 +50,7 @@ vega::painel::_linha_backend() {
 
 vega::painel::_linha_sistema() {
   local distro_json
-  if distro_json="$(vega::dbus::call_data System Distro)"; then
+  if vega::dbus::call_data_into distro_json System Distro; then
     printf '%s • gerenciado via vega-cli' "$(printf '%s' "$distro_json" | jq -r '.[0]')"
   else
     printf '%s' "$VEGA_DBUS_LAST_ERROR"
@@ -58,7 +59,7 @@ vega::painel::_linha_sistema() {
 
 vega::painel::_linha_atualizacoes() {
   local data count in_progress error
-  if ! data="$(vega::dbus::call_data Software RequestUpdateCheck)"; then
+  if ! vega::dbus::call_data_into data Software RequestUpdateCheck; then
     printf '%s' "$VEGA_DBUS_LAST_ERROR"
     return
   fi
@@ -78,7 +79,7 @@ vega::painel::_linha_atualizacoes() {
 
 vega::painel::_linha_backup() {
   local count
-  if ! count="$(vega::painel::_count_out0 Backup ListConfigs)"; then
+  if ! vega::painel::_count_out0 count Backup ListConfigs; then
     printf '%s' "$VEGA_DBUS_LAST_ERROR"
   elif [ "$count" -eq 0 ]; then
     printf 'Não configurado'
@@ -89,7 +90,7 @@ vega::painel::_linha_backup() {
 
 vega::painel::_linha_snapshots() {
   local available_json available count
-  if ! available_json="$(vega::dbus::call_data Snapshots Available)"; then
+  if ! vega::dbus::call_data_into available_json Snapshots Available; then
     printf '%s' "$VEGA_DBUS_LAST_ERROR"
     return
   fi
@@ -98,7 +99,7 @@ vega::painel::_linha_snapshots() {
     printf 'Não suportado neste sistema'
     return
   fi
-  if ! count="$(vega::painel::_count_out0 Snapshots ListSnapshots)"; then
+  if ! vega::painel::_count_out0 count Snapshots ListSnapshots; then
     printf '%s' "$VEGA_DBUS_LAST_ERROR"
   elif [ "$count" -eq 0 ]; then
     printf 'Nenhum snapshot'
@@ -109,7 +110,7 @@ vega::painel::_linha_snapshots() {
 
 vega::painel::_linha_servicos() {
   local data struggling
-  if ! data="$(vega::dbus::call_data Services ListServices)"; then
+  if ! vega::dbus::call_data_into data Services ListServices; then
     printf '%s' "$VEGA_DBUS_LAST_ERROR"
     return
   fi
@@ -126,7 +127,7 @@ vega::painel::_linha_servicos() {
 
 vega::painel::_linha_disco() {
   local data
-  if ! data="$(vega::dbus::call_data System DiskUsage)"; then
+  if ! vega::dbus::call_data_into data System DiskUsage; then
     printf '%s' "$VEGA_DBUS_LAST_ERROR"
     return
   fi

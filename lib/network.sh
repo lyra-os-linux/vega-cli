@@ -78,7 +78,7 @@ vega::network::_interfaces() {
   while true; do
     vega::ui::infobox "Carregando interfaces…" "Rede e Firewall"
     local data rc=0
-    data="$(vega::dbus::call_data Network ListInterfaces)" || rc=$?
+    vega::dbus::call_data_into data Network ListInterfaces || rc=$?
     if [ "$rc" -ne 0 ]; then
       vega::ui::msgbox "Falha ao listar interfaces: $VEGA_DBUS_LAST_ERROR" "Interfaces"
       return
@@ -131,7 +131,7 @@ Velocidade: ${speeds[$choice]:-—}" "${names[$choice]}"
 vega::network::_proxy() {
   vega::ui::infobox "Carregando configuração de proxy…" "Proxy"
   local data rc=0
-  data="$(vega::dbus::call_data Network GetProxy)" || rc=$?
+  vega::dbus::call_data_into data Network GetProxy || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha ao consultar proxy: $VEGA_DBUS_LAST_ERROR" "Proxy"
     return
@@ -217,13 +217,13 @@ vega::network::_firewall() {
   while true; do
     vega::ui::infobox "Carregando firewall…" "Firewall"
     local status_data rc=0
-    status_data="$(vega::dbus::call_data Firewall Status)" || rc=$?
+    vega::dbus::call_data_into status_data Firewall Status || rc=$?
     if [ "$rc" -ne 0 ]; then
       vega::ui::msgbox "Falha ao consultar firewall: $VEGA_DBUS_LAST_ERROR" "Firewall"
       return
     fi
     local services_data
-    services_data="$(vega::dbus::call_data Firewall ListServices)" || rc=$?
+    vega::dbus::call_data_into services_data Firewall ListServices || rc=$?
     if [ "$rc" -ne 0 ]; then
       vega::ui::msgbox "Falha ao listar serviços do firewall: $VEGA_DBUS_LAST_ERROR" "Firewall"
       return

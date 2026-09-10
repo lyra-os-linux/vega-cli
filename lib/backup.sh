@@ -70,8 +70,8 @@ Frequência: $(vega::backup::_frequencia_label "$freq")" \
     "Confirmar" || return
 
   local result rc=0
-  result="$(vega::dbus::call Backup CreateConfig "(sassss)" \
-    "$id" "${#paths[@]}" "${paths[@]}" "$destino" "$uuid" "$freq")" || rc=$?
+  vega::dbus::call_into result Backup CreateConfig "(sassss)" \
+    "$id" "${#paths[@]}" "${paths[@]}" "$destino" "$uuid" "$freq" || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha ao criar configuração: $VEGA_DBUS_LAST_ERROR" "Backup"
     return
@@ -86,7 +86,7 @@ vega::backup::_ver_caminhos_snapshot() {
   local config_id="$1" snapshot_id="$2"
   vega::ui::infobox "Carregando caminhos…" "Backup"
   local data rc=0
-  data="$(vega::dbus::call_data Backup ListSnapshotPaths ss "$config_id" "$snapshot_id")" || rc=$?
+  vega::dbus::call_data_into data Backup ListSnapshotPaths ss "$config_id" "$snapshot_id" || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha ao listar caminhos: $VEGA_DBUS_LAST_ERROR" "Backup"
     return
@@ -129,8 +129,8 @@ vega::backup::_restaurar() {
 
   vega::ui::infobox "Restaurando snapshot $snapshot_id…" "Backup"
   local result rc=0
-  result="$(vega::dbus::run_transaction Backup RestoreSnapshot RestoreFinished \
-    sss "$snapshot_id" "$destino" "$modo")" || rc=$?
+  vega::dbus::run_transaction_into result Backup RestoreSnapshot RestoreFinished \
+    sss "$snapshot_id" "$destino" "$modo" || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha na restauração: $VEGA_DBUS_LAST_ERROR" "Backup"
   else
@@ -157,7 +157,7 @@ vega::backup::_ver_snapshots() {
   local config_id="$1"
   vega::ui::infobox "Carregando snapshots de \"$config_id\"…" "Backup"
   local data rc=0
-  data="$(vega::dbus::call_data Backup ListSnapshots s "$config_id")" || rc=$?
+  vega::dbus::call_data_into data Backup ListSnapshots s "$config_id" || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha ao listar snapshots: $VEGA_DBUS_LAST_ERROR" "Backup"
     return
@@ -205,7 +205,7 @@ vega::backup::_acoes_config() {
     vega::ui::yesno "Executar o backup \"$id\" agora?" "Confirmar" || return
     vega::ui::infobox "Executando backup \"$id\"…" "Backup"
     local result rc=0
-    result="$(vega::dbus::run_transaction Backup RunBackupNow BackupFinished s "$id")" || rc=$?
+    vega::dbus::run_transaction_into result Backup RunBackupNow BackupFinished s "$id" || rc=$?
     if [ "$rc" -ne 0 ]; then
       vega::ui::msgbox "Falha no backup: $VEGA_DBUS_LAST_ERROR" "Backup"
     else
@@ -231,7 +231,7 @@ vega::backup::_configuracoes() {
   while true; do
     vega::ui::infobox "Carregando configurações de backup…" "Backup"
     local data rc=0
-    data="$(vega::dbus::call_data Backup ListConfigs)" || rc=$?
+    vega::dbus::call_data_into data Backup ListConfigs || rc=$?
     if [ "$rc" -ne 0 ]; then
       vega::ui::msgbox "Falha ao listar configurações: $VEGA_DBUS_LAST_ERROR" "Backup"
       return
@@ -297,7 +297,7 @@ O snapshot será criado pelo backend disponível no sistema." \
 
   vega::ui::infobox "Criando ponto de restauração…" "Pontos de restauração"
   local result rc=0
-  result="$(vega::dbus::call Snapshots CreateSnapshot s "$descricao")" || rc=$?
+  vega::dbus::call_into result Snapshots CreateSnapshot s "$descricao" || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha ao criar snapshot: $VEGA_DBUS_LAST_ERROR" "Pontos de restauração"
     return
@@ -312,7 +312,7 @@ O snapshot será criado pelo backend disponível no sistema." \
 vega::backup::_diff_pacotes() {
   local snapshot_id="$1"
   local data rc=0
-  data="$(vega::dbus::call_data Snapshots DiffPackages u "$snapshot_id")" || rc=$?
+  vega::dbus::call_data_into data Snapshots DiffPackages u "$snapshot_id" || rc=$?
   if [ "$rc" -ne 0 ]; then
     printf 'Falha ao comparar pacotes: %s' "$VEGA_DBUS_LAST_ERROR"
     return 1
@@ -407,7 +407,7 @@ vega::backup::_acoes_snapshot_sistema() {
 
 vega::backup::_pontos_restauracao() {
   local available_json available rc=0
-  available_json="$(vega::dbus::call_data Snapshots Available)" || rc=$?
+  vega::dbus::call_data_into available_json Snapshots Available || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha ao consultar suporte a snapshots: $VEGA_DBUS_LAST_ERROR" "Pontos de restauração"
     return
@@ -421,7 +421,7 @@ vega::backup::_pontos_restauracao() {
   while true; do
     vega::ui::infobox "Carregando pontos de restauração…" "Pontos de restauração"
     local data
-    data="$(vega::dbus::call_data Snapshots ListSnapshots)" || rc=$?
+    vega::dbus::call_data_into data Snapshots ListSnapshots || rc=$?
     if [ "$rc" -ne 0 ]; then
       vega::ui::msgbox "Falha ao listar: $VEGA_DBUS_LAST_ERROR" "Pontos de restauração"
       return

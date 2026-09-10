@@ -44,7 +44,7 @@ vega::datetime::_escolher() {
 vega::module_datetime() {
   vega::ui::infobox "Carregando data, hora e idioma…" "Data, Hora e Idioma"
   local status_data rc=0
-  status_data="$(vega::dbus::call_data DateTime Status)" || rc=$?
+  vega::dbus::call_data_into status_data DateTime Status || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha ao consultar configuração: $VEGA_DBUS_LAST_ERROR" "Data, Hora e Idioma"
     return
@@ -63,9 +63,19 @@ Teclado: $keymap
 Editar essa configuração?" "Data, Hora e Idioma" || return
 
   local -a timezones locales keymaps
-  mapfile -t timezones < <(vega::dbus::call_data DateTime ListTimezones | jq -r '.[0][]')
-  mapfile -t locales < <(vega::dbus::call_data DateTime ListLocales | jq -r '.[0][]')
-  mapfile -t keymaps < <(vega::dbus::call_data DateTime ListKeymaps | jq -r '.[0][]')
+  local choices_data list_method list_target
+  for list_method in ListTimezones ListLocales ListKeymaps; do
+    if ! vega::dbus::call_data_into choices_data DateTime "$list_method"; then
+      vega::ui::msgbox "Falha ao listar opções: $VEGA_DBUS_LAST_ERROR" "Data, Hora e Idioma"
+      return
+    fi
+    case "$list_method" in
+      ListTimezones) list_target=timezones ;;
+      ListLocales) list_target=locales ;;
+      ListKeymaps) list_target=keymaps ;;
+    esac
+    mapfile -t "$list_target" < <(printf '%s' "$choices_data" | jq -r '.[0][]')
+  done
 
   local novo_timezone novo_locale novo_keymap
   novo_timezone="$(vega::datetime::_escolher "Fuso horário" "Escolha o fuso horário:" "$timezone" "${timezones[@]}")"

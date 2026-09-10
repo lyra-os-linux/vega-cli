@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CALL = re.compile(r"vega::dbus::(?:call|call_data)\s+([A-Z][A-Za-z0-9]+)\s+([A-Z][A-Za-z0-9]+)")
+CALL = re.compile(r"vega::dbus::(?:(?:call|call_data|run_transaction)_into\s+[a-zA-Z_][a-zA-Z_0-9]*|call|call_data|run_transaction)\s+([A-Z][A-Za-z0-9]+)\s+([A-Z][A-Za-z0-9]+)")
 LOCALIZED = {
     ("Hardware", "Inventory"): "InventoryLocalized",
     ("Hardware", "FirmwareStatus"): "FirmwareStatusLocalized",

@@ -10,7 +10,7 @@
 vega::module_logs() {
   vega::ui::infobox "Carregando unidades do journal…" "Log do Sistema"
   local units_data rc=0
-  units_data="$(vega::dbus::call_data Logs ListUnits)" || rc=$?
+  vega::dbus::call_data_into units_data Logs ListUnits || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha ao listar unidades: $VEGA_DBUS_LAST_ERROR" "Log do Sistema"
     return
@@ -57,7 +57,7 @@ vega::module_logs() {
 
   vega::ui::infobox "Consultando o journal…" "Log do Sistema"
   local data
-  data="$(vega::dbus::call_data Logs Query ssssu "$unit" "$priority" "$since" "$search" "$limite")" || rc=$?
+  vega::dbus::call_data_into data Logs Query ssssu "$unit" "$priority" "$since" "$search" "$limite" || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha ao consultar logs: $VEGA_DBUS_LAST_ERROR" "Log do Sistema"
     return

@@ -22,9 +22,10 @@ jobs:
       - name: Install shell validators
         run: sudo apt-get update && sudo apt-get install -y jq shellcheck
       - name: Validate syntax, shell quality and D-Bus calls
+        working-directory: vega-cli
         run: |
-          for file in vega-cli/bin/vega vega-cli/lib/*.sh vega-cli/scripts/*.sh vega-cli/tests/*.sh; do bash -n "$file"; done
-          shellcheck vega-cli/bin/vega vega-cli/lib/*.sh vega-cli/scripts/*.sh vega-cli/tests/*.sh
-          ./vega-cli/tests/test-dbus.sh
-          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s vega-cli/tests -v
-          python3 ./vega-cli/scripts/check-dbus-contract.py ./lyra-vega-dbus/dbus
+          for file in bin/vega lib/*.sh scripts/*.sh tests/*.sh; do bash -n "$file"; done
+          shellcheck bin/vega lib/*.sh scripts/*.sh tests/*.sh
+          ./tests/test-dbus.sh
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
+          python3 scripts/check-dbus-contract.py ../lyra-vega-dbus/dbus

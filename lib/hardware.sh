@@ -18,7 +18,7 @@
 vega::hardware::_inventario() {
   vega::ui::infobox "Carregando inventário…" "Hardware e Kernel"
   local data rc=0
-  data="$(vega::dbus::call_data Hardware Inventory)" || rc=$?
+  vega::dbus::call_data_into data Hardware Inventory || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha ao consultar inventário: $VEGA_DBUS_LAST_ERROR" "Hardware e Kernel"
     return
@@ -27,7 +27,12 @@ vega::hardware::_inventario() {
   cpu="$(printf '%s' "$data" | jq -r '.[0][0]')"
   gpu="$(printf '%s' "$data" | jq -r '.[0][1]')"
   ram="$(printf '%s' "$data" | jq -r '.[0][2]')"
-  firmware="$(vega::dbus::call_data Hardware FirmwareStatus | jq -r '.[0]')" || firmware="?"
+  local firmware_data
+  if vega::dbus::call_data_into firmware_data Hardware FirmwareStatus; then
+    firmware="$(printf '%s' "$firmware_data" | jq -r '.[0]')"
+  else
+    firmware="$VEGA_DBUS_LAST_ERROR"
+  fi
 
   vega::ui::msgbox "Processador: $cpu
 Vídeo: $gpu
@@ -59,7 +64,7 @@ vega::hardware::_kernel_instalados() {
   while true; do
     vega::ui::infobox "Carregando kernels instalados…" "Kernel"
     local data rc=0
-    data="$(vega::dbus::call_data Kernel ListInstalled)" || rc=$?
+    vega::dbus::call_data_into data Kernel ListInstalled || rc=$?
     if [ "$rc" -ne 0 ]; then
       vega::ui::msgbox "Falha ao listar kernels instalados: $VEGA_DBUS_LAST_ERROR" "Kernel"
       return
@@ -90,12 +95,12 @@ vega::hardware::_kernel_disponiveis() {
   while true; do
     vega::ui::infobox "Carregando kernels disponíveis…" "Kernel"
     local available_data installed_data rc=0
-    available_data="$(vega::dbus::call_data Kernel AvailablePackages)" || rc=$?
+    vega::dbus::call_data_into available_data Kernel AvailablePackages || rc=$?
     if [ "$rc" -ne 0 ]; then
       vega::ui::msgbox "Falha ao listar kernels disponíveis: $VEGA_DBUS_LAST_ERROR" "Kernel"
       return
     fi
-    installed_data="$(vega::dbus::call_data Kernel ListInstalled)" || rc=$?
+    vega::dbus::call_data_into installed_data Kernel ListInstalled || rc=$?
     if [ "$rc" -ne 0 ]; then
       vega::ui::msgbox "Falha ao listar kernels instalados: $VEGA_DBUS_LAST_ERROR" "Kernel"
       return
@@ -148,7 +153,7 @@ vega::hardware::_kernel_disponiveis() {
 vega::hardware::_kernel_boot() {
   vega::ui::infobox "Carregando configuração de boot…" "Kernel"
   local status_data rc=0
-  status_data="$(vega::dbus::call_data Kernel BootStatus)" || rc=$?
+  vega::dbus::call_data_into status_data Kernel BootStatus || rc=$?
   if [ "$rc" -ne 0 ]; then
     vega::ui::msgbox "Falha ao consultar configuração de boot: $VEGA_DBUS_LAST_ERROR" "Kernel"
     return
@@ -165,7 +170,7 @@ vega::hardware::_kernel_boot() {
   fi
 
   local entries_data
-  entries_data="$(vega::dbus::call_data Kernel ListBootEntries)" || entries_data='[[]]'
+  vega::dbus::call_data_into entries_data Kernel ListBootEntries || entries_data='[[]]'
   local entries_joined
   entries_joined="$(printf '%s' "$entries_data" | jq -r '.[0] | if length == 0 then "Nenhuma entrada listada" else join(" • ") end')"
 

@@ -9,7 +9,7 @@ vega::module_storage() {
   while true; do
     vega::ui::infobox "Carregando volumes…" "Armazenamento"
     local data rc=0
-    data="$(vega::dbus::call_data Storage ListVolumes)" || rc=$?
+    vega::dbus::call_data_into data Storage ListVolumes || rc=$?
     if [ "$rc" -ne 0 ]; then
       vega::ui::msgbox "Falha ao listar volumes: $VEGA_DBUS_LAST_ERROR" "Armazenamento"
       return

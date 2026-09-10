@@ -34,7 +34,7 @@ vega::monitor::_recursos_amostra() {
   local prev_read=0 prev_write=0 prev_rx=0 prev_tx=0 prev_time=0 have_prev=0
   while true; do
     local data
-    data="$(vega::dbus::call_data Monitor Metrics 2>/dev/null)" || {
+    vega::dbus::call_data_into data Monitor Metrics 2>/dev/null || {
       sleep 2
       continue
     }
@@ -112,7 +112,7 @@ vega::monitor::_processos() {
   while true; do
     vega::ui::infobox "Carregando processos…" "Monitor do Sistema"
     local data rc=0
-    data="$(vega::dbus::call_data Monitor ListProcesses)" || rc=$?
+    vega::dbus::call_data_into data Monitor ListProcesses || rc=$?
     if [ "$rc" -ne 0 ]; then
       vega::ui::msgbox "Falha ao listar processos: $VEGA_DBUS_LAST_ERROR" "Monitor do Sistema"
       return

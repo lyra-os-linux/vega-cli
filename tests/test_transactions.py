@@ -73,6 +73,18 @@ class TransactionTests(unittest.TestCase):
         self.assertEqual(value['message'], 'finished before reply')
         self.assertEqual(len(self.calls()), 1)
 
+    def test_nvidia_confirmation_uses_a_boolean_on_the_wire(self):
+        self.service('immediate')
+        value = self.result(self.helper(method='InstallNvidia', args=('b', 'true')))
+        self.assertTrue(value['success'])
+        self.assertEqual(self.calls()[0]['args'], [True])
+
+    def test_nvidia_rejects_ambiguous_confirmation_before_dbus(self):
+        self.service('immediate')
+        for args in [('s', 'true'), ('b', 'yes'), ('b', '1'), ('b', 'true', 'extra')]:
+            self.assertFalse(self.result(self.helper(method='InstallNvidia', args=args))['success'])
+        self.assertFalse(self.calls())
+
     def test_backup_and_restore_use_their_own_finished_signals(self):
         self.service('immediate')
         for method, finished, args in [('RunBackupNow', 'BackupFinished', ('s', 'config')),

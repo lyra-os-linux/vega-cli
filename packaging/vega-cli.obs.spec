@@ -22,6 +22,7 @@ Source0:        vega-cli-src-%{version}.tar
 BuildArch:      noarch
 
 Requires:       dialog
+Requires:       vegad >= 5.1.29
 Requires:       jq
 Requires:       systemd
 Requires:       polkit

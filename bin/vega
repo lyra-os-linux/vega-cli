@@ -26,7 +26,7 @@ vega::resolve_root() {
 VEGA_CLI_ROOT="$(vega::resolve_root)"
 # Placeholder até o empacotamento (#104) substituir pela versão real da
 # release, do mesmo jeito que vegad recebe a versão via -ldflags.
-VEGA_CLI_VERSION="5.1.22"
+VEGA_CLI_VERSION="5.1.23"
 readonly VEGA_CLI_ROOT VEGA_CLI_VERSION
 
 # shellcheck source=lib/term.sh
@@ -43,6 +43,8 @@ source "$VEGA_CLI_ROOT/lib/software.sh"
 source "$VEGA_CLI_ROOT/lib/backup.sh"
 # shellcheck source=lib/hardware.sh
 source "$VEGA_CLI_ROOT/lib/hardware.sh"
+# shellcheck source=lib/nvidia.sh
+source "$VEGA_CLI_ROOT/lib/nvidia.sh"
 # shellcheck source=lib/users.sh
 source "$VEGA_CLI_ROOT/lib/users.sh"
 # shellcheck source=lib/network.sh

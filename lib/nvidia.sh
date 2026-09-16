@@ -86,8 +86,8 @@ $(vega::nvidia::text \
           'Install official NVIDIA 610.57.04 RPMs, SUSE-signed module and Lyra integration? Internet access and administrator authentication are required. Recovery will be created and verified before installation. Do not power off during the operation.' \
           '¿Instalar los RPM oficiales NVIDIA 610.57.04, el módulo firmado por SUSE y la integración Lyra? Se requiere internet y autenticación administrativa. Se creará y verificará la recuperación antes de instalar. No apague durante la operación.')" NVIDIA || continue
         vega::ui::infobox "$(vega::nvidia::text 'Preparando recuperação e instalando; aguarde a conclusão…' 'Preparing recovery and installing; wait for completion…' 'Preparando recuperación e instalando; espere la finalización…')" NVIDIA
-        local result
-        if vega::dbus::run_transaction_into result Software InstallNvidia TransactionFinished b true; then
+        local _transaction_result
+        if vega::dbus::run_transaction_into _transaction_result Software InstallNvidia TransactionFinished b true; then
           vega::ui::msgbox "$(vega::nvidia::text 'Instalação concluída e verificada. Consulte o estado antes de reiniciar.' 'Installation completed and verified. Review the status before restarting.' 'Instalación completada y verificada. Revise el estado antes de reiniciar.')" NVIDIA
         else
           vega::ui::msgbox "$(vega::nvidia::text 'Instalação não confirmada. Verifique o diagnóstico e a recuperação antes de repetir.' 'Installation not confirmed. Check diagnostics and recovery before retrying.' 'Instalación no confirmada. Revise el diagnóstico y la recuperación antes de repetir.')

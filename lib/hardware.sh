@@ -241,11 +241,13 @@ vega::module_hardware() {
   while true; do
     choice="$(vega::ui::menu "Hardware e Kernel" "Escolha uma área:" \
       inventario "Inventário" \
+      nvidia "NVIDIA" \
       kernel "Kernel" \
       voltar "Voltar")" || return
 
     case "$choice" in
     inventario) vega::hardware::_inventario || true ;;
+    nvidia) vega::nvidia::open || true ;;
     kernel) vega::hardware::_kernel || true ;;
     voltar | "") return ;;
     esac

@@ -78,6 +78,7 @@ def called(conn, sender, path, interface, method, parameters, invocation):
 
 xml = '''<node><interface name="org.lyraos.Vega1.Software">
 <method name="Start"><arg type="u" direction="out"/></method>
+<method name="InstallNvidia"><arg type="b" direction="in"/><arg type="u" direction="out"/></method>
 <method name="AddRepo"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="u" direction="out"/></method>
 </interface><interface name="org.lyraos.Vega1.Backup">
 <method name="RunBackupNow"><arg type="s" direction="in"/><arg type="u" direction="out"/></method>

@@ -186,11 +186,16 @@ def main():
         for value in (args.timeout, args.call_timeout):
             if not math.isfinite(value) or not 0 < value <= 86400:
                 raise ValueError('Timeout inválido.')
-        # Current CLI transaction methods take only string arguments (or none).
-        # Reject other signatures before connecting, never interpret shell data.
-        if args.signature != 's' * len(args.arguments):
+        # NVIDIA has one strict boolean; never interpret a string as a truthy
+        # value, shell command or generic GVariant expression.
+        values = tuple(args.arguments)
+        if (args.interface, args.method) == ('Software', 'InstallNvidia'):
+            if args.signature != 'b' or args.arguments not in (['true'], ['false']):
+                raise ValueError('Confirmação NVIDIA inválida.')
+            values = (args.arguments == ['true'],)
+        elif args.signature != 's' * len(args.arguments):
             raise ValueError('Assinatura de transação não suportada.')
-        parameters = GLib.Variant(f'({args.signature})', tuple(args.arguments))
+        parameters = GLib.Variant(f'({args.signature})', values)
         address = Gio.dbus_address_get_for_bus_sync(Gio.BusType.SYSTEM, None)
         connection = Gio.DBusConnection.new_for_address_sync(
             address, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT | Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION,

@@ -82,9 +82,9 @@ $(jq -r '.[0][4]' <<<"$recovery")"
         vega::ui::yesno "$summary
 
 $(vega::nvidia::text \
-          'Instalar os RPMs oficiais NVIDIA 610.57.04, módulo assinado SUSE e integração Lyra? Requer internet e autenticação administrativa. A recuperação será criada e verificada antes da instalação. Não desligue durante a operação.' \
-          'Install official NVIDIA 610.57.04 RPMs, SUSE-signed module and Lyra integration? Internet access and administrator authentication are required. Recovery will be created and verified before installation. Do not power off during the operation.' \
-          '¿Instalar los RPM oficiales NVIDIA 610.57.04, el módulo firmado por SUSE y la integración Lyra? Se requiere internet y autenticación administrativa. Se creará y verificará la recuperación antes de instalar. No apague durante la operación.')" NVIDIA || continue
+          'Instalar os RPMs oficiais NVIDIA 615.71.09, módulo assinado SUSE e integração Lyra? Requer internet e autenticação administrativa. A recuperação será criada e verificada antes da instalação. Não desligue durante a operação.' \
+          'Install official NVIDIA 615.71.09 RPMs, SUSE-signed module and Lyra integration? Internet access and administrator authentication are required. Recovery will be created and verified before installation. Do not power off during the operation.' \
+          '¿Instalar los RPM oficiales NVIDIA 615.71.09, el módulo firmado por SUSE y la integración Lyra? Se requiere internet y autenticación administrativa. Se creará y verificará la recuperación antes de instalar. No apague durante la operación.')" NVIDIA || continue
         vega::ui::infobox "$(vega::nvidia::text 'Preparando recuperação e instalando; aguarde a conclusão…' 'Preparing recovery and installing; wait for completion…' 'Preparando recuperación e instalando; espere la finalización…')" NVIDIA
         local _transaction_result
         if vega::dbus::run_transaction_into _transaction_result Software InstallNvidia TransactionFinished b true; then

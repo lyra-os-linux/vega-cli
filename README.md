@@ -17,6 +17,9 @@ já usados pelo `vega-gtk`; aqui muda só o frontend, que é shell script
   correlação das transações, sem dependência de GTK ou sessão gráfica
 - `polkit` (com `pkttyagent`) — autorização de ações privilegiadas numa
   sessão sem agente gráfico
+  (via SSH, a política do vegad só pede a senha de membros de `wheel` com a
+  regra `50-vegad-remote-admin.rules` do vegad 5.1.37+; o `vega` explica isso
+  quando uma ação é negada)
 
 Só roda pelo terminal — não tem lançador de desktop (`.desktop`).
 

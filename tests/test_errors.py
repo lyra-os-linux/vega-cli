@@ -68,6 +68,29 @@ printf '%s' "$VEGA_DBUS_LAST_ERROR"
                     self.assertIn(expected, out)
                     self.assertNotIn('old', out)
 
+    def test_denial_explains_remote_session_without_the_vegad_rule(self):
+        # Sessão remota (SSH) sem a regra 50-vegad-remote-admin.rules: a
+        # negação do polkit ganha a orientação de atualizar o vegad.
+        body = """
+printf '#!/bin/sh\necho %s\n' "$REMOTE" > loginctl; chmod +x loginctl
+printf '#!/bin/sh\n' > pkttyagent; chmod +x pkttyagent
+export XDG_SESSION_ID=42 VEGA_POLKIT_REMOTE_RULES="$RULES"
+rc=0; vega::dbus::call System Ping >/dev/null || rc=$?
+[[ $rc != 0 ]]
+printf '%s' "$VEGA_DBUS_LAST_ERROR"
+"""
+        denial = {'default': {'error': 'Call failed: org.freedesktop.PolicyKit1.Error.NotAuthorized'}}
+        missing = str(self.work / 'missing' / '50-vegad-remote-admin.rules')
+        present = self.work / 'present' / '50-vegad-remote-admin.rules'
+        present.parent.mkdir()
+        present.write_text('// rule\n')
+        for remote, rules, expect_hint in [('yes', missing, True), ('no', missing, False), ('yes', str(present), False)]:
+            with self.subTest(remote=remote, rules=rules):
+                out = self.run_shell(body.replace('$REMOTE', remote).replace('$RULES', rules), denial)
+                self.assertIn('não autorizada', out)
+                self.assertEqual('50-vegad-remote-admin.rules' in out, expect_hint)
+                self.assertEqual('wheel' in out, expect_hint)
+
     def test_success_clears_stale_error_and_preserves_data(self):
         out = self.run_shell('''
 for target in result raw out err_file rc data; do

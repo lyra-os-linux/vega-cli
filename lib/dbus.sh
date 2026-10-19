@@ -213,6 +213,31 @@ vega::dbus::run_transaction() {
   return 1
 }
 
+# Regra polkit que o vegad (5.1.37+) instala para administração remota: fora
+# de uma sessão local ativa (SSH), membros de wheel só recebem o pedido da
+# própria senha com ela; sem ela o polkit nega antes de qualquer desafio
+# (vega-cli#26). Sobrescrevível só nos testes.
+VEGA_POLKIT_REMOTE_RULES="${VEGA_POLKIT_REMOTE_RULES:-/usr/share/polkit-1/rules.d/50-vegad-remote-admin.rules}"
+
+# Contexto pra explicar uma negação do polkit que o usuário não consegue
+# distinguir sozinho: sem pkttyagent a senha nunca é pedida neste terminal;
+# numa sessão remota sem a regra acima a política do vegad nega direto.
+# Imprime vazio quando não há nada a acrescentar (ex.: senha errada ou
+# diálogo cancelado numa sessão que já tem tudo instalado).
+vega::dbus::_authorization_hint() {
+  if ! command -v pkttyagent >/dev/null 2>&1; then
+    printf ' %s' "Instale o pacote polkit (pkttyagent) para digitar a senha neste terminal."
+    return 0
+  fi
+  local remote=""
+  if command -v loginctl >/dev/null 2>&1 && [ -n "${XDG_SESSION_ID:-}" ]; then
+    remote="$(loginctl show-session "$XDG_SESSION_ID" -p Remote --value 2>/dev/null || true)"
+  fi
+  if [ "$remote" = yes ] && [ ! -e "$VEGA_POLKIT_REMOTE_RULES" ]; then
+    printf ' %s' "Sessão remota: membros de wheel só recebem o pedido de senha com a regra polkit $(basename -- "$VEGA_POLKIT_REMOTE_RULES") do vegad 5.1.37 ou mais recente; atualize o vegad."
+  fi
+}
+
 # Traduz os erros mais comuns do busctl (vegad fora do ar, timeout, polkit
 # negando) pra mensagem em pt-br; no caso genérico, devolve a mensagem
 # original do busctl sem o prefixo "Call failed: ".
@@ -226,7 +251,7 @@ vega::dbus::_friendly_error() {
     echo "vegad não respondeu a tempo (timeout)."
     ;;
   *"org.freedesktop.PolicyKit1.Error.NotAuthorized"* | *"Authorization"* | *"authentication"* | *"not authorized"*)
-    echo "Ação não autorizada (autenticação polkit recusada ou cancelada)."
+    echo "Ação não autorizada (autenticação polkit recusada ou cancelada).$(vega::dbus::_authorization_hint)"
     ;;
   *)
     msg="${msg#Call failed: }"

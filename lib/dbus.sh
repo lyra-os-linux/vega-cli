@@ -94,6 +94,40 @@ vega::dbus::locale() {
   esac
 }
 
+# vega::dbus::_with_agent <comando> [args...]
+# Executa o comando com um pkttyagent registrado para o PID do próprio
+# comando, para que uma ação que exige senha (polkit auth_self/auth_admin)
+# peça a senha neste terminal. O comando espera numa FIFO até o agente
+# fechar o --notify-fd (registro concluído) e só então faz exec — o exec
+# preserva PID e horário de início, que é a identidade que o polkit compara
+# com o remetente D-Bus. Se o agente falhar, a FIFO fecha do mesmo jeito e
+# o comando roda sem agente (a negação ganha a dica de autorização).
+vega::dbus::_with_agent() {
+  if [ "${VEGA_PKTTYAGENT:-0}" != 1 ]; then
+    "$@"
+    return
+  fi
+  local agent_dir cmd_pid agent_pid rc=0
+  agent_dir="$(mktemp -d)" || { "$@"; return; }
+  if ! mkfifo "$agent_dir/ready"; then
+    rm -rf -- "$agent_dir"
+    "$@"
+    return
+  fi
+  (
+    IFS= read -r _ <"$agent_dir/ready" || true
+    exec "$@"
+  ) &
+  cmd_pid=$!
+  pkttyagent --process "$cmd_pid" --notify-fd 3 3>"$agent_dir/ready" >/dev/null 2>&1 &
+  agent_pid=$!
+  wait "$cmd_pid" || rc=$?
+  kill "$agent_pid" >/dev/null 2>&1 || true
+  wait "$agent_pid" >/dev/null 2>&1 || true
+  rm -rf -- "$agent_dir"
+  return "$rc"
+}
+
 # vega::dbus::call <interface> <method> [assinatura arg...]
 # <interface> é só o sufixo do contrato (ex. "Monitor"), prefixado aqui com
 # org.lyraos.Vega1. Argumentos extras seguem o formato do busctl call:
@@ -134,7 +168,7 @@ vega::dbus::call() {
   # com "-" (ex.: o filtro de período "-1hour" do módulo Logs) é lido pelo
   # parser de opções do próprio busctl em vez de como valor — busctl
   # aborta com "invalid option" antes de sequer tentar a chamada D-Bus.
-  out="$(busctl --system --json=short --timeout="${VEGA_DBUS_CALL_TIMEOUT:-$VEGA_DBUS_TIMEOUT}" call \
+  out="$(vega::dbus::_with_agent busctl --system --json=short --timeout="${VEGA_DBUS_CALL_TIMEOUT:-$VEGA_DBUS_TIMEOUT}" call \
     "$VEGA_DBUS_BUS_NAME" "$VEGA_DBUS_OBJECT_PATH" \
     "$VEGA_DBUS_BUS_NAME.$interface" "$method" -- "$@" 2>"$err_file")" || rc=$?
 
@@ -179,7 +213,7 @@ vega::dbus::call_data() {
 VEGA_DBUS_TRANSACTION_KEY_PENDING=""
 
 vega::dbus::_transaction_helper() {
-  /usr/bin/python3 "${BASH_SOURCE[0]%/*}/transaction.py" "$@"
+  vega::dbus::_with_agent /usr/bin/python3 "${BASH_SOURCE[0]%/*}/transaction.py" "$@"
 }
 
 vega::dbus::run_transaction() {

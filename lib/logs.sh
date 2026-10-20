@@ -5,7 +5,8 @@
 # pelo entrypoint (bin/vega) — não é executável sozinho.
 #
 # A leitura administrativa exige a ação Polkit própria do vegad. O
-# pkttyagent instalado pelo entrypoint atende a autenticação via SSH.
+# pkttyagent registrado por chamada (vega::dbus::_with_agent) atende a
+# autenticação via SSH.
 
 vega::module_logs() {
   vega::ui::infobox "Carregando unidades do journal…" "Log do Sistema"

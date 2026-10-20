@@ -42,4 +42,28 @@ if vega::dbus::call Users RemoveUser s alice >/dev/null; then
 fi
 [[ "$VEGA_DBUS_LAST_ERROR" == *"não autorizada"* ]] || fail "polkit error was not translated"
 
+# vega-cli#26: o pkttyagent precisa ser registrado para o PID do processo que
+# fala com o vegad (o remetente D-Bus), não para o shell do vega-cli.
+cat >"$temporary/pkttyagent" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$MOCK_AGENT_LOG"
+echo $$ >"$MOCK_AGENT_LOG.pid"
+exec 3>&-
+sleep 5
+EOF
+chmod +x "$temporary/pkttyagent"
+export MOCK_AGENT_LOG="$temporary/agent.log"
+VEGA_PKTTYAGENT=1
+command_pid="$(vega::dbus::_with_agent sh -c 'echo $$')"
+grep -Fx -- "--process $command_pid --notify-fd 3" "$MOCK_AGENT_LOG" >/dev/null ||
+  fail "agent was not registered for the command PID ($command_pid): $(cat "$MOCK_AGENT_LOG")"
+rc=0; vega::dbus::_with_agent sh -c 'exit 7' || rc=$?
+[ "$rc" -eq 7 ] || fail "wrapper did not preserve the command exit status ($rc)"
+agent_pid="$(cat "$MOCK_AGENT_LOG.pid")"
+! kill -0 "$agent_pid" 2>/dev/null || fail "agent $agent_pid left running"
+VEGA_PKTTYAGENT=0
+: >"$MOCK_AGENT_LOG"
+[ "$(vega::dbus::_with_agent echo direct)" = direct ] || fail "wrapper without agent changed output"
+[ ! -s "$MOCK_AGENT_LOG" ] || fail "agent started although VEGA_PKTTYAGENT=0"
+
 echo "vega-cli D-Bus mock tests passed"

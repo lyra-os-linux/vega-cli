@@ -32,12 +32,13 @@ o polkit solicita autorização apenas ao executar uma ação que altera o siste
 bin/vega        # entrypoint — resolve o próprio diretório (segue
                  # symlinks) e faz source dos módulos em lib/
 lib/term.sh      # checagens de ambiente (dialog/busctl/jq instalados,
-                 # TTY), registro do pkttyagent e limpeza do terminal
+                 # TTY), detecção do pkttyagent e limpeza do terminal
                  # ao sair
 lib/ui.sh        # wrappers finos sobre `dialog` (menu, msgbox) com
                  # --backtitle/--stdout consistentes
 lib/dbus.sh      # acesso ao vegad via `busctl --json=short` + `jq`
-                 # (org.lyraos.Vega1.*), com tratamento de erro
+                 # (org.lyraos.Vega1.*), pkttyagent registrado por
+                 # chamada para o PID do busctl, com tratamento de erro
                  # consistente
 lib/menu.sh      # menu principal e navegação entre módulos
 ```

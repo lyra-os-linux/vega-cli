@@ -45,19 +45,26 @@ vega::require_tty() {
 # cleanup — vazio se pkttyagent não estiver instalado ou não tiver sido
 # iniciado ainda.
 VEGA_PKTTYAGENT_PID=""
+# 1 quando cada chamada ao vegad deve levar um pkttyagent próprio
+# (vega::dbus::_with_agent). Fica 0 sem pkttyagent ou fora de um TTY.
+VEGA_PKTTYAGENT=0
 
 # Sessões SSH normalmente não têm agente polkit gráfico registrado, então
-# qualquer método do vegad que exija autorização (requirePolkit()) falharia
-# silenciosamente. pkttyagent registra um agente baseado em terminal para
-# este processo, que passa a poder pedir senha diretamente no TTY atual.
+# qualquer método do vegad que exija autorização (requirePolkit()) falharia.
+# O vegad pergunta ao polkit pelo remetente D-Bus da chamada, que é o
+# processo do busctl (ou do helper de transações), não este shell; um
+# agente registrado com --process $$ nunca era encontrado e o polkit
+# respondia "no agent is available" (vega-cli#26, gate da Server 16.1 RC 2).
+# Por isso o agente é registrado por chamada, para o PID do próprio comando
+# — ver vega::dbus::_with_agent. Aqui só se decide se isso está disponível.
 # Não é fatal se faltar: módulos read-only continuam funcionando, ações
 # privilegiadas é que vão falhar na autorização quando chamadas.
 vega::install_pkttyagent() {
-  if ! command -v pkttyagent >/dev/null 2>&1; then
+  if ! command -v pkttyagent >/dev/null 2>&1 || ! command -v mkfifo >/dev/null 2>&1; then
     return 0
   fi
-  pkttyagent --process $$ >/dev/null 2>&1 &
-  VEGA_PKTTYAGENT_PID=$!
+  [ -t 0 ] || return 0
+  VEGA_PKTTYAGENT=1
 }
 
 vega::cleanup_pkttyagent() {

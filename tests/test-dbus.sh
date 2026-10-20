@@ -53,6 +53,7 @@ sleep 5
 EOF
 chmod +x "$temporary/pkttyagent"
 export MOCK_AGENT_LOG="$temporary/agent.log"
+# shellcheck disable=SC2034 # lida por vega::dbus::_with_agent
 VEGA_PKTTYAGENT=1
 command_pid="$(vega::dbus::_with_agent sh -c 'echo $$')"
 grep -Fx -- "--process $command_pid --notify-fd 3" "$MOCK_AGENT_LOG" >/dev/null ||
@@ -61,6 +62,7 @@ rc=0; vega::dbus::_with_agent sh -c 'exit 7' || rc=$?
 [ "$rc" -eq 7 ] || fail "wrapper did not preserve the command exit status ($rc)"
 agent_pid="$(cat "$MOCK_AGENT_LOG.pid")"
 ! kill -0 "$agent_pid" 2>/dev/null || fail "agent $agent_pid left running"
+# shellcheck disable=SC2034 # lida por vega::dbus::_with_agent
 VEGA_PKTTYAGENT=0
 : >"$MOCK_AGENT_LOG"
 [ "$(vega::dbus::_with_agent echo direct)" = direct ] || fail "wrapper without agent changed output"

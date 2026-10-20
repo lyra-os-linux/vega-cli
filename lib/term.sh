@@ -47,6 +47,7 @@ vega::require_tty() {
 VEGA_PKTTYAGENT_PID=""
 # 1 quando cada chamada ao vegad deve levar um pkttyagent próprio
 # (vega::dbus::_with_agent). Fica 0 sem pkttyagent ou fora de um TTY.
+# shellcheck disable=SC2034 # lida em lib/dbus.sh (vega::dbus::_with_agent)
 VEGA_PKTTYAGENT=0
 
 # Sessões SSH normalmente não têm agente polkit gráfico registrado, então
@@ -64,6 +65,7 @@ vega::install_pkttyagent() {
     return 0
   fi
   [ -t 0 ] || return 0
+  # shellcheck disable=SC2034 # lida em lib/dbus.sh (vega::dbus::_with_agent)
   VEGA_PKTTYAGENT=1
 }
 

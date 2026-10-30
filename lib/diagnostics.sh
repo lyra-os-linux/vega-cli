@@ -123,6 +123,16 @@ vega::diag::_has() {
   jq -e --arg c "$1" '.[0] | index($c) != null' <<<"$capabilities" >/dev/null
 }
 
+# vega::diag::_auth <o que precisa da senha> — antes de uma chamada que pode
+# pedir senha: o pkttyagent pergunta no próprio terminal, então a tela do
+# dialog sai da frente e o prazo cobre o tempo de digitar. O polkit só aceita a
+# senha por um agente; o dialog não pode coletá-la por ele.
+VEGA_DIAG_AUTH_TIMEOUT=300
+vega::diag::_auth() {
+  clear
+  printf '%s\n\nSe for pedida, digite a sua senha logo abaixo e tecle Enter.\n\n' "$1"
+}
+
 # ---------------------------------------------------------------------------
 # Resumo ao abrir o vega
 
@@ -161,14 +171,14 @@ vega::diag::_follow() {
 vega::diag::_report_into() {
   local -n _out="$1"
   local data
-  vega::dbus::call_data_into data Diagnostics Report ub "$2" false || return 1
+  vega::diag::_auth "Lendo o relatório do diagnóstico (inclui trechos do journal)."
+  VEGA_DBUS_CALL_TIMEOUT=$VEGA_DIAG_AUTH_TIMEOUT vega::dbus::call_data_into data Diagnostics Report ub "$2" false || return 1
   # shellcheck disable=SC2034 # devolvido por referência
   _out="$(jq -r '.[0]' <<<"$data")"
 }
 
 vega::diag::_show_report() {
   local job="$1" report file
-  vega::ui::infobox "Carregando o relatório…" "Diagnóstico de saúde"
   if ! vega::diag::_report_into report "$job"; then
     vega::ui::msgbox "Falha ao ler o relatório: $VEGA_DBUS_LAST_ERROR" "Diagnóstico de saúde"
     return 1
@@ -183,7 +193,8 @@ vega::diag::_show_report() {
 vega::diag::_run() {
   local -a args=("as" "$#" "$@" 1 locale s "$(vega::dbus::locale)")
   local data job
-  if ! vega::dbus::call_data_into data Diagnostics Start "${args[0]}a{sv}" "${args[@]:1}"; then
+  vega::diag::_auth "Iniciando o diagnóstico."
+  if ! VEGA_DBUS_CALL_TIMEOUT=$VEGA_DIAG_AUTH_TIMEOUT vega::dbus::call_data_into data Diagnostics Start "${args[0]}a{sv}" "${args[@]:1}"; then
     vega::ui::msgbox "Não foi possível iniciar: $VEGA_DBUS_LAST_ERROR" "Diagnóstico de saúde"
     return 1
   fi
@@ -254,7 +265,8 @@ vega::diag::_fix() {
   local ref
   for ref in "${refs[@]}"; do args+=("${ref%%:*}" "${ref##*:}"); done
   local data
-  if ! vega::dbus::call_data_into data Diagnostics RepairFindings "ua(su)" "${args[@]:1}"; then
+  vega::diag::_auth "Aplicando os consertos (um snapshot é criado antes)."
+  if ! VEGA_DBUS_CALL_TIMEOUT=$VEGA_DIAG_AUTH_TIMEOUT vega::dbus::call_data_into data Diagnostics RepairFindings "ua(su)" "${args[@]:1}"; then
     vega::ui::msgbox "Não foi possível corrigir: $VEGA_DBUS_LAST_ERROR" "Corrigir achados"
     return 0
   fi
@@ -273,7 +285,8 @@ vega::diag::_seen_logs() {
   job="$(jq -r '.jobId' <<<"$report")"
   vega::ui::yesno "Os erros, falhas de programas e serviços com falha registrados até o último diagnóstico deixam de contar. O que acontecer depois volta a aparecer." \
     "Marcar os logs como vistos?" || return 0
-  if vega::dbus::call Diagnostics MarkLogsSeen u "$job" >/dev/null; then
+  vega::diag::_auth "Marcando os logs como vistos."
+  if VEGA_DBUS_CALL_TIMEOUT=$VEGA_DIAG_AUTH_TIMEOUT vega::dbus::call Diagnostics MarkLogsSeen u "$job" >/dev/null; then
     vega::ui::msgbox "Pronto. O próximo teste de logs só conta o que acontecer daqui em diante." "Já vi os logs"
   else
     vega::ui::msgbox "Rode o teste de logs e tente de novo: $VEGA_DBUS_LAST_ERROR" "Já vi os logs"
@@ -300,7 +313,8 @@ vega::diag::_periodic() {
   desligar) enabled=false ;;
   *) return 0 ;;
   esac
-  if vega::dbus::call Diagnostics SetPeriodic bs "$enabled" "$frequency" >/dev/null; then
+  vega::diag::_auth "Mudando a verificação periódica."
+  if VEGA_DBUS_CALL_TIMEOUT=$VEGA_DIAG_AUTH_TIMEOUT vega::dbus::call Diagnostics SetPeriodic bs "$enabled" "$frequency" >/dev/null; then
     vega::ui::msgbox "Verificação periódica atualizada." "Verificação periódica"
   else
     vega::ui::msgbox "Não foi possível mudar: $VEGA_DBUS_LAST_ERROR" "Verificação periódica"
@@ -355,7 +369,8 @@ vega::diag::network() {
   vega::ui::yesno "$(vega::diag::remedy_items "$remedies" "$report" | cut -f2)" "Aplicar o conserto?" || return 0
   local data args=()
   mapfile -t args < <(jq -r '.[0] | length, (.[] | .[0], .[1])' <<<"$remedies")
-  if vega::dbus::call_data_into data Diagnostics RepairFindings "ua(su)" "$job" "${args[@]}"; then
+  vega::diag::_auth "Aplicando o conserto da rede."
+  if VEGA_DBUS_CALL_TIMEOUT=$VEGA_DIAG_AUTH_TIMEOUT vega::dbus::call_data_into data Diagnostics RepairFindings "ua(su)" "$job" "${args[@]}"; then
     local repair
     repair="$(jq -r '.[0]' <<<"$data")"
     vega::diag::_follow "$repair"
@@ -399,9 +414,9 @@ vega::cleanup::open() {
   [ -n "${ids[0]:-}" ] || return 0
   vega::ui::yesno "Estes itens serão apagados (não dá para desfazer):
 $(printf '  • %s\n' "${ids[@]}")" "Liberar espaço?" || return 0
-  vega::ui::infobox "Limpando…" "Liberar espaço"
+  vega::diag::_auth "Liberando espaço."
   local message
-  if vega::dbus::run_transaction_into message Cleanup Clean Finished as "${ids[@]}"; then
+  if VEGA_DBUS_CALL_TIMEOUT=$VEGA_DIAG_AUTH_TIMEOUT vega::dbus::run_transaction_into message Cleanup Clean Finished as "${ids[@]}"; then
     local result="${message%%:*}" freed="${message##*:}"
     vega::ui::msgbox "$(vega::diag::bytes "$freed") liberados.$([ "$result" = partial ] && printf '\nAlgumas categorias não puderam ser limpas; veja o log do vegad.')" "Liberar espaço"
   else

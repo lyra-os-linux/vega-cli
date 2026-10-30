@@ -43,11 +43,15 @@ vega::module_storage() {
       menu_args+=("$idx" "$titulo — ${fstype:-sem filesystem} • $montagem${removivel}")
       idx=$((idx + 1))
     done
-    menu_args+=(voltar "Voltar")
+    menu_args+=(limpar "Liberar espaço…" voltar "Voltar")
 
     local choice
     choice="$(vega::ui::menu "Armazenamento" "Escolha um volume:" "${menu_args[@]}")" || return
     [ "$choice" = "voltar" ] && return
+    if [ "$choice" = "limpar" ]; then
+      vega::cleanup::open || true
+      continue
+    fi
 
     local path="${paths[$choice]}" mountpoint="${mountpoints[$choice]}"
     local uso="${sizes[$choice]}"

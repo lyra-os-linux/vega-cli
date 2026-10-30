@@ -27,5 +27,6 @@ jobs:
           for file in bin/vega lib/*.sh scripts/*.sh tests/*.sh; do bash -n "$file"; done
           shellcheck bin/vega lib/*.sh scripts/*.sh tests/*.sh
           ./tests/test-dbus.sh
+          ./tests/test-diagnostics.sh
           /usr/bin/python3 -B -m unittest discover -s tests -v
           python3 scripts/check-dbus-contract.py ../lyra-vega-dbus/dbus

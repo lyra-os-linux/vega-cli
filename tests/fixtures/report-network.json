@@ -1,0 +1,57 @@
+{
+  "finished": "2026-10-30T12:15:10-03:00",
+  "host": {
+    "bios": "V1.20",
+    "hostname": "[redacted]",
+    "kernel": "6.12.0-160100.7-default",
+    "os": "Lyra OS 16.1",
+    "product": "Nitro AN515-57",
+    "vegad": "5.6.1"
+  },
+  "jobId": 29,
+  "locale": "pt-BR",
+  "result": "ok",
+  "schema": 1,
+  "stages": [
+    {
+      "durationSeconds": 0,
+      "findings": [],
+      "id": "network",
+      "metrics": {
+        "connectivity": "full",
+        "device": "wlp0s20f3",
+        "portalUrl": "http://conncheck.opensuse.org",
+        "steps": [
+          {
+            "detail": "wlp0s20f3 · Wi-Fi [redacted] · 60%",
+            "id": "link",
+            "status": "ok"
+          },
+          {
+            "detail": "[redacted], [redacted], [redacted]",
+            "id": "address",
+            "status": "ok"
+          },
+          {
+            "detail": "192.168.15.1",
+            "id": "gateway",
+            "status": "ok"
+          },
+          {
+            "detail": "conncheck.opensuse.org",
+            "id": "dns",
+            "status": "ok"
+          },
+          {
+            "id": "internet",
+            "status": "ok"
+          }
+        ],
+        "wifiSignal": 60
+      },
+      "summary": "Conexão funcionando: rede, endereço, DNS e internet",
+      "verdict": "ok"
+    }
+  ],
+  "started": "2026-10-30T12:15:09-03:00"
+}

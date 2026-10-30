@@ -41,6 +41,9 @@ lib/dbus.sh      # acesso ao vegad via `busctl --json=short` + `jq`
                  # chamada para o PID do busctl, com tratamento de erro
                  # consistente
 lib/menu.sh      # menu principal e navegação entre módulos
+lib/diagnostics.sh # Diagnóstico de saúde (Hardware e Kernel), resumo da
+                 # verificação semanal ao abrir, "Minha internet não
+                 # funciona" (Rede) e Liberar espaço (Armazenamento)
 ```
 
 Cada módulo real (Painel, Software, Backup, ...) troca sua entrada em

@@ -1,0 +1,12 @@
+{"schema":1,"jobId":31,"started":"2026-10-30T10:00:00-03:00","stages":[
+ {"id":"packages","verdict":"attention","summary":"1 arquivo alterado","findings":[
+  {"severity":"attention","code":"packages.binary-changed","text":"Um programa do sistema foi alterado: /usr/bin/x","remedy":"reinstall-packages","remedyArgs":["x"]}]},
+ {"id":"security","verdict":"attention","summary":"2 portas expostas","findings":[
+  {"severity":"info","code":"security.secure-boot-off","text":"Secure Boot desligado"},
+  {"severity":"attention","code":"security.exposed-port","text":"python3 aceita conexões na porta 8000","remedy":"close-port","remedyArgs":["public|port:8000/tcp"]},
+  {"severity":"attention","code":"security.exposed-port","text":"python3 aceita conexões na porta 9000","remedy":"close-port","remedyArgs":["public|port:9000/tcp"]}]},
+ {"id":"network","verdict":"fail","summary":"A conexão para em: DNS","metrics":{"steps":[
+  {"id":"link","status":"ok","detail":"enp1s0"},{"id":"address","status":"ok"},{"id":"gateway","status":"ok","detail":"10.0.0.1"},
+  {"id":"dns","status":"fail","detail":"conncheck.opensuse.org"},{"id":"internet","status":"skipped"}]},
+  "findings":[{"severity":"fail","code":"network.dns-failed","text":"O DNS não traduz nomes","remedy":"temporary-dns","remedyArgs":["enp1s0"]}]},
+ {"id":"logs","verdict":"ok","summary":"0 falhas","findings":[]}]}

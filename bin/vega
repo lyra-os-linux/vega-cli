@@ -26,7 +26,7 @@ vega::resolve_root() {
 VEGA_CLI_ROOT="$(vega::resolve_root)"
 # Placeholder até o empacotamento (#104) substituir pela versão real da
 # release, do mesmo jeito que vegad recebe a versão via -ldflags.
-VEGA_CLI_VERSION="5.1.26"
+VEGA_CLI_VERSION="5.2.0"
 readonly VEGA_CLI_ROOT VEGA_CLI_VERSION
 
 # shellcheck source=lib/term.sh
@@ -59,6 +59,8 @@ source "$VEGA_CLI_ROOT/lib/storage.sh"
 source "$VEGA_CLI_ROOT/lib/logs.sh"
 # shellcheck source=lib/monitor.sh
 source "$VEGA_CLI_ROOT/lib/monitor.sh"
+# shellcheck source=lib/diagnostics.sh
+source "$VEGA_CLI_ROOT/lib/diagnostics.sh"
 # shellcheck source=lib/menu.sh
 source "$VEGA_CLI_ROOT/lib/menu.sh"
 
@@ -73,6 +75,10 @@ vega::install_pkttyagent
 # navegar até o menu (critério de aceite da issue #105). "|| true": sob
 # set -e, se o usuário fechar o msgbox com Esc (código != 0) em vez de
 # Enter, isso não pode derrubar a sessão inteira.
+# Novidades da verificação semanal desde a última vez (add-cli-diagnostics):
+# só aparece quando há algo novo que este usuário ainda não viu.
+vega::diag::login_summary || true
+
 vega::module_painel || true
 
 vega::main_menu

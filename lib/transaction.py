@@ -81,7 +81,13 @@ class Transaction:
             return
         if (sender, path, interface) != (self.owner, PATH, self.interface):
             return
-        expected = '(ussss)' if member == 'RepoKeyPending' else '(ubs)'
+        if member == 'RepoKeyPending':
+            expected = '(ussss)'
+        elif self.interface.endswith('.Cleanup'):
+            # Cleanup.Finished(jobId, result, freedBytes): add-cli-diagnostics.
+            expected = '(ust)'
+        else:
+            expected = '(ubs)'
         if parameters.get_type_string() != expected:
             self.finish(False, 'Sinal de transação inválido recebido do vegad.')
             return
@@ -99,6 +105,10 @@ class Transaction:
             return
         if member == 'RepoKeyPending':
             self.key_pending = list(values[1:])
+        elif self.interface.endswith('.Cleanup'):
+            result, freed = values[1:]
+            # "partial" still freed space; the message carries "<result>:<bytes>".
+            self.finish(result in ('ok', 'partial'), f'{result}:{freed}')
         else:
             success, message = values[1:]
             self.finish(success, message or ('' if success else 'A transação falhou sem detalhes do vegad.'),
@@ -189,7 +199,13 @@ def main():
         # NVIDIA has one strict boolean; never interpret a string as a truthy
         # value, shell command or generic GVariant expression.
         values = tuple(args.arguments)
-        if (args.interface, args.method) == ('Software', 'InstallNvidia'):
+        if (args.interface, args.method, args.finished) == ('Cleanup', 'Clean', 'Finished'):
+            # One typed list of category ids, never a generic GVariant.
+            if args.signature != 'as' or not args.arguments or not all(
+                    re.fullmatch(r'[a-z][a-z-]{0,39}', item) for item in args.arguments):
+                raise ValueError('Categorias de limpeza inválidas.')
+            values = (args.arguments,)
+        elif (args.interface, args.method) == ('Software', 'InstallNvidia'):
             if args.signature != 'b' or args.arguments not in (['true'], ['false']):
                 raise ValueError('Confirmação NVIDIA inválida.')
             values = (args.arguments == ['true'],)

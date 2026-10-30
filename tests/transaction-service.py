@@ -44,6 +44,13 @@ def called(conn, sender, path, interface, method, parameters, invocation):
     if mode == 'invalid-reply':
         invocation.return_value(GLib.Variant('(u)', (0,)))
         return
+    if interface == NAME + '.Cleanup':
+        # Another job finishing first, then ours: freed bytes travel as "t".
+        invocation.return_value(GLib.Variant('(u)', (7,)))
+        for job, result, freed in ((99, 'failed', 0), (7, 'partial' if mode == 'partial' else 'ok', 268435456)):
+            conn.emit_signal(None, PATH, interface, 'Finished', GLib.Variant('(ust)', (job, result, freed)))
+        conn.flush_sync(None)
+        return
     if mode in ('immediate', 'interleaved', 'key'):
         if mode != 'immediate':
             key(conn, 99, 'other')
@@ -83,6 +90,8 @@ xml = '''<node><interface name="org.lyraos.Vega1.Software">
 </interface><interface name="org.lyraos.Vega1.Backup">
 <method name="RunBackupNow"><arg type="s" direction="in"/><arg type="u" direction="out"/></method>
 <method name="RestoreSnapshot"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="u" direction="out"/></method>
+</interface><interface name="org.lyraos.Vega1.Cleanup">
+<method name="Clean"><arg type="as" direction="in"/><arg type="u" direction="out"/></method>
 </interface></node>'''
 info = Gio.DBusNodeInfo.new_for_xml(xml)
 for interface in info.interfaces:

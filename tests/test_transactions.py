@@ -94,6 +94,28 @@ class TransactionTests(unittest.TestCase):
                 self.assertTrue(value['success'])
         self.assertEqual(len(self.calls()), 2)
 
+    def cleanup(self, mode):
+        self.service(mode)
+        return self.result(self.helper(interface='Cleanup', method='Clean', finished='Finished',
+                                       args=('as', 'coredumps', 'journal')))
+
+    def test_cleanup_waits_for_its_own_finished_with_freed_bytes(self):
+        value = self.cleanup('immediate')
+        self.assertTrue(value['success'])
+        self.assertEqual(value['message'], 'ok:268435456')
+        self.assertEqual(self.calls()[-1]['args'], [['coredumps', 'journal']])
+
+    def test_partial_cleanup_still_reports_what_was_freed(self):
+        value = self.cleanup('partial')
+        self.assertTrue(value['success'])
+        self.assertEqual(value['message'], 'partial:268435456')
+
+    def test_cleanup_rejects_other_shapes_before_dbus(self):
+        self.service('immediate')
+        for args in [('s', 'journal'), ('as',), ('as', '../etc'), ('as', 'Journal'), ('as', '-y')]:
+            self.assertFalse(self.result(self.helper(interface='Cleanup', method='Clean', finished='Finished', args=args))['success'])
+        self.assertFalse(self.calls())
+
     def test_interleaved_early_signals_are_correlated(self):
         self.service('interleaved')
         value = self.result(self.helper())

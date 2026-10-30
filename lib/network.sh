@@ -282,6 +282,7 @@ vega::module_network() {
   local choice
   while true; do
     choice="$(vega::ui::menu "Rede e Firewall" "Escolha uma área:" \
+      internet "Minha internet não funciona" \
       interfaces "Interfaces" \
       proxy "Proxy" \
       vpn "VPN" \
@@ -289,6 +290,7 @@ vega::module_network() {
       voltar "Voltar")" || return
 
     case "$choice" in
+    internet) vega::diag::network || true ;;
     interfaces) vega::network::_interfaces || true ;;
     proxy) vega::network::_proxy || true ;;
     vpn) vega::network::_vpn || true ;;

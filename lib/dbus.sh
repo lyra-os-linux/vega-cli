@@ -220,9 +220,6 @@ vega::dbus::run_transaction() {
   VEGA_DBUS_LAST_ERROR=""
   VEGA_DBUS_TRANSACTION_KEY_PENDING=""
   local reply err_file rc=0 transaction_timeout="$VEGA_DBUS_TRANSACTION_TIMEOUT"
-  # A verified OS backup plus RPM downloads may exceed the ordinary 15-minute
-  # observation budget. Keep the exception fixed to this one typed operation.
-  if [ "${1:-}" = Software ] && [ "${2:-}" = InstallNvidia ]; then transaction_timeout=7200; fi
   err_file="$(mktemp)" || {
     VEGA_DBUS_LAST_ERROR="Não foi possível preparar a espera da transação."
     return 1

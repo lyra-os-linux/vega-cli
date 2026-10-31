@@ -196,8 +196,6 @@ def main():
         for value in (args.timeout, args.call_timeout):
             if not math.isfinite(value) or not 0 < value <= 86400:
                 raise ValueError('Timeout inválido.')
-        # NVIDIA has one strict boolean; never interpret a string as a truthy
-        # value, shell command or generic GVariant expression.
         values = tuple(args.arguments)
         if (args.interface, args.method, args.finished) == ('Cleanup', 'Clean', 'Finished'):
             # One typed list of category ids, never a generic GVariant.
@@ -205,10 +203,6 @@ def main():
                     re.fullmatch(r'[a-z][a-z-]{0,39}', item) for item in args.arguments):
                 raise ValueError('Categorias de limpeza inválidas.')
             values = (args.arguments,)
-        elif (args.interface, args.method) == ('Software', 'InstallNvidia'):
-            if args.signature != 'b' or args.arguments not in (['true'], ['false']):
-                raise ValueError('Confirmação NVIDIA inválida.')
-            values = (args.arguments == ['true'],)
         elif args.signature != 's' * len(args.arguments):
             raise ValueError('Assinatura de transação não suportada.')
         parameters = GLib.Variant(f'({args.signature})', values)

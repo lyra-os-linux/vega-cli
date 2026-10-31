@@ -13,6 +13,15 @@ import gi
 gi.require_version('Gio', '2.0')
 from gi.repository import Gio, GLib
 
+try:
+    # PyGObject >= 3.50 deprecates GLib.unix_signal_add (the warning on stderr
+    # would break the JSON-only contract); GLibUnix exists since GLib 2.80.
+    gi.require_version('GLibUnix', '2.0')
+    from gi.repository import GLibUnix
+    unix_signal_add = getattr(GLibUnix, 'signal_add', None) or GLibUnix.signal_add_full
+except (ImportError, ValueError, AttributeError):
+    unix_signal_add = GLib.unix_signal_add
+
 NAME = 'org.lyraos.Vega1'
 PATH = '/org/lyraos/Vega1'
 BUS = 'org.freedesktop.DBus'
@@ -157,7 +166,7 @@ class Transaction:
             self.sources.append(GLib.timeout_add(max(1, math.ceil((self.deadline - time.monotonic()) * 1000)),
                                                  self.finish, False, 'Tempo esgotado; resultado da transação não confirmado.'))
             for signum in (signal.SIGINT, signal.SIGTERM):
-                self.sources.append(GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signum, lambda *_: self.finish(
+                self.sources.append(unix_signal_add(GLib.PRIORITY_DEFAULT, signum, lambda *_: self.finish(
                                                         False, 'Espera interrompida; resultado da transação não confirmado.')))
             self.connection.call(self.owner, PATH, self.interface, self.method, self.parameters,
                                  GLib.VariantType.new('(u)'), Gio.DBusCallFlags.ALLOW_INTERACTIVE_AUTHORIZATION,

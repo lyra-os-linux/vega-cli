@@ -13,6 +13,15 @@ import gi
 gi.require_version('Gio', '2.0')
 from gi.repository import Gio, GLib
 
+try:
+    # PyGObject >= 3.50 deprecates GLib.unix_signal_add (the warning on stderr
+    # would break the JSON-only contract); GLibUnix exists since GLib 2.80.
+    gi.require_version('GLibUnix', '2.0')
+    from gi.repository import GLibUnix
+    unix_signal_add = getattr(GLibUnix, 'signal_add', None) or GLibUnix.signal_add_full
+except (ImportError, ValueError, AttributeError):
+    unix_signal_add = GLib.unix_signal_add
+
 NAME = 'org.lyraos.Vega1'
 PATH = '/org/lyraos/Vega1'
 BUS = 'org.freedesktop.DBus'
@@ -157,7 +166,7 @@ class Transaction:
             self.sources.append(GLib.timeout_add(max(1, math.ceil((self.deadline - time.monotonic()) * 1000)),
                                                  self.finish, False, 'Tempo esgotado; resultado da transação não confirmado.'))
             for signum in (signal.SIGINT, signal.SIGTERM):
-                self.sources.append(GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signum, lambda *_: self.finish(
+                self.sources.append(unix_signal_add(GLib.PRIORITY_DEFAULT, signum, lambda *_: self.finish(
                                                         False, 'Espera interrompida; resultado da transação não confirmado.')))
             self.connection.call(self.owner, PATH, self.interface, self.method, self.parameters,
                                  GLib.VariantType.new('(u)'), Gio.DBusCallFlags.ALLOW_INTERACTIVE_AUTHORIZATION,
@@ -196,8 +205,6 @@ def main():
         for value in (args.timeout, args.call_timeout):
             if not math.isfinite(value) or not 0 < value <= 86400:
                 raise ValueError('Timeout inválido.')
-        # NVIDIA has one strict boolean; never interpret a string as a truthy
-        # value, shell command or generic GVariant expression.
         values = tuple(args.arguments)
         if (args.interface, args.method, args.finished) == ('Cleanup', 'Clean', 'Finished'):
             # One typed list of category ids, never a generic GVariant.
@@ -205,10 +212,6 @@ def main():
                     re.fullmatch(r'[a-z][a-z-]{0,39}', item) for item in args.arguments):
                 raise ValueError('Categorias de limpeza inválidas.')
             values = (args.arguments,)
-        elif (args.interface, args.method) == ('Software', 'InstallNvidia'):
-            if args.signature != 'b' or args.arguments not in (['true'], ['false']):
-                raise ValueError('Confirmação NVIDIA inválida.')
-            values = (args.arguments == ['true'],)
         elif args.signature != 's' * len(args.arguments):
             raise ValueError('Assinatura de transação não suportada.')
         parameters = GLib.Variant(f'({args.signature})', values)
